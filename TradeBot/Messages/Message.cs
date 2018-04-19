@@ -7,7 +7,7 @@ using SteamKit2;
 
 namespace TradeBot.Messages
 {
-    class Message : EventArgs
+    public class Message : EventArgs
     {
         public MessageType messageType { get; set; }
         public List<string> parameters { get; set; }
@@ -19,7 +19,19 @@ namespace TradeBot.Messages
             this.parameters = parameters;
             this.from = from;
         }
-        
+
+        public override bool Equals(object obj)
+        {
+            var message = obj as Message;
+
+            if (message == null)
+                return false;
+
+            if (message.messageType != this.messageType || !message.parameters.SequenceEqual(this.parameters) || message.from != this.from)
+                return false;
+
+            return true;         
+        }
 
 
     }

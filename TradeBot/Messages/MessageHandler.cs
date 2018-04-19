@@ -7,9 +7,10 @@ using System.Threading.Tasks;
 
 namespace TradeBot.Messages
 {
-    class MessageHandler
+    public class MessageHandler
     {
         public event EventHandler<Message> MessageProcessedEvent;
+
 
 
         public void processMessage(string message, SteamID from)
@@ -18,21 +19,21 @@ namespace TradeBot.Messages
             MessageProcessedEvent(this, m);   
         }
 
-        private Message parseMessage(string message, SteamID from)
+        public Message parseMessage(string message, SteamID from)
         {
             try
             {
+                string command;
+                List<string> parameters = new List<string>();
                 if (message.Length <= 1)
                 {
-                    return new Message(MessageType.UKNOWN, null, from);
+                    return new Message(MessageType.UNKNOWN, parameters, from);
                 }
                 message = message.Trim();
                 if (message.Remove(1) != "!")
                 {
-                    return new Message(MessageType.UKNOWN, null, from);
+                    return new Message(MessageType.UNKNOWN, parameters, from);
                 }
-                string command;
-                List<string> parameters;
                 if (message.Contains(" "))
                 {
                     command = message.Remove(message.IndexOf(" ")).ToLower();
@@ -40,8 +41,7 @@ namespace TradeBot.Messages
                 }
                 else
                 {
-                    command = message;
-                    parameters = null;
+                    command = message.ToLower();
                 }
                 switch (command)
                 {
@@ -49,20 +49,23 @@ namespace TradeBot.Messages
                     case "!sell": return new Message(MessageType.SELL, parameters, from);
                     case "!buy": return new Message(MessageType.BUY, parameters, from);
                     case "!changewalletaddress": return new Message(MessageType.CHANGE_WALLET_ADDRESS, parameters, from);
-                    default: return new Message(MessageType.UKNOWN, null, from);
+                    default: parameters = new List<string>();  return new Message(MessageType.UNKNOWN, parameters, from);
                 }
             }catch(Exception e)
             {
-                return new Message(MessageType.UKNOWN, null, from);
+                return new Message(MessageType.UNKNOWN, null, from);
             }
         }
 
-        private List<string> getParams(string message)
+        public List<string> getParams(string message)
         {
             List<string> parameters = new List<string>();
             string[] p = message.Split(' ');
             foreach (string s in p)
+            { 
                 parameters.Add(s);
+                Console.WriteLine("---{0}---", s);
+            }
             return parameters;
         }
     }

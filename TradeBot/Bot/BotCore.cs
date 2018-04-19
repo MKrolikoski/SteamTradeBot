@@ -5,34 +5,48 @@ using System.Threading;
 using SteamKit2;
 using Newtonsoft.Json;
 using TradeBot.Messages;
+using SteamToolkit;
+using SteamToolkit.Trading;
+using System.Collections.Generic;
 
 namespace TradeBot.Bot
 {
     class BotCore
     {
-        private SteamClient steamClient;
-        private CallbackManager manager;
+        private CallbackManager callbackManager;
 
-        private SteamFriends steamFriends;
+        private EconServiceHandler offerHandler;
+        private MarketHandler marketHandler;
+
+
+        private SteamClient steamClient;
         private SteamUser steamUser;
+        private SteamFriends steamFriends;
+
 
         private string authCode, twoFactorAuth;
+
         private SteamID steamID;
+
+        private Inventory steamInventory;
+
 
         private BotConfig config;
 
         private MessageHandler messageHandler;
 
+        private Thread tradeOfferThread;
+
         public BotCore()
         {
             config = new BotConfig();
-            if(!File.Exists("config.cfg"))
+            if (!File.Exists("config.cfg"))
             {
                 config.createNew();
             }
             config = JsonConvert.DeserializeObject<BotConfig>(File.ReadAllText("config.cfg"));
 
-            if(config.login.Equals("") || config.password.Equals(""))
+            if (config.login.Equals("") || config.password.Equals(""))
             {
                 Console.Write("Username: ");
                 config.login = Console.ReadLine();
@@ -40,11 +54,12 @@ namespace TradeBot.Bot
                 Console.Write("Password: ");
                 config.password = Console.ReadLine();
             }
-            
+
 
             steamClient = new SteamClient();
+
             // create the callback manager which will route callbacks to function calls
-            manager = new CallbackManager(steamClient);
+            callbackManager = new CallbackManager(steamClient);
 
             messageHandler = new MessageHandler();
 
@@ -53,21 +68,30 @@ namespace TradeBot.Bot
 
             steamFriends = steamClient.GetHandler<SteamFriends>();
 
-            // register a few callbacks we're interested in
-            // these are registered upon creation to a callback manager, which will then route the callbacks
-            // to the functions specified
-            manager.Subscribe<SteamClient.ConnectedCallback>(OnConnected);
-            manager.Subscribe<SteamClient.DisconnectedCallback>(OnDisconnected);
+            offerHandler = new EconServiceHandler(config.api_key);
+            marketHandler = new MarketHandler();
 
-            manager.Subscribe<SteamUser.LoggedOnCallback>(OnLoggedOn);
-            manager.Subscribe<SteamUser.LoggedOffCallback>(OnLoggedOff);
+
+        // register a few callbacks we're interested in
+        // these are registered upon creation to a callback manager, which will then route the callbacks
+        // to the functions specified
+            callbackManager.Subscribe<SteamClient.ConnectedCallback>(OnConnected);
+            callbackManager.Subscribe<SteamClient.DisconnectedCallback>(OnDisconnected);
+
+            callbackManager.Subscribe<SteamUser.LoggedOnCallback>(OnLoggedOn);
+
+
+            callbackManager.Subscribe<SteamUser.LoggedOffCallback>(OnLoggedOff);
 
             // this callback is triggered when the steam servers wish for the client to store the sentry file
-            manager.Subscribe<SteamUser.UpdateMachineAuthCallback>(OnMachineAuth);
+            callbackManager.Subscribe<SteamUser.UpdateMachineAuthCallback>(OnMachineAuth);
 
-            manager.Subscribe<SteamUser.AccountInfoCallback>(OnAccountInfo);
+            callbackManager.Subscribe<SteamUser.AccountInfoCallback>(OnAccountInfo);
 
-            manager.Subscribe<SteamFriends.FriendMsgCallback>(OnMessageReceived);
+            callbackManager.Subscribe<SteamFriends.FriendMsgCallback>(OnMessageReceived);
+
+
+
 
             messageHandler.MessageProcessedEvent += OnMessageProcessed;
 
@@ -84,9 +108,12 @@ namespace TradeBot.Bot
             while (config.working)
             {
                 // in order for the callbacks to get routed, they need to be handled by the manager
-                manager.RunWaitCallbacks(TimeSpan.FromSeconds(1));
+                callbackManager.RunWaitCallbacks(TimeSpan.FromSeconds(1));
             }
         }
+
+
+
 
         private void OnConnected(SteamClient.ConnectedCallback callback)
         {
@@ -118,7 +145,8 @@ namespace TradeBot.Bot
                 // this will also be null for our first (no authcode) and second (authcode only) logon attempts
                 SentryFileHash = sentryHash,
             });
-            steamID = steamClient.SteamID;
+
+
         }
 
         private void OnDisconnected(SteamClient.DisconnectedCallback callback)
@@ -127,6 +155,8 @@ namespace TradeBot.Bot
             // so after we read an authcode from the user, we need to reconnect to begin the logon flow again
 
             Console.WriteLine("Disconnected from Steam, reconnecting in 5...");
+
+            CancelTradeOfferPollingThread();
 
             Thread.Sleep(TimeSpan.FromSeconds(5));
 
@@ -168,8 +198,16 @@ namespace TradeBot.Bot
             }
 
             Console.WriteLine("Successfully logged on!");
-        
+
             config.save();
+
+            steamID = steamClient.SteamID;
+
+            //730 - appID for CS:GO
+            steamInventory = new Inventory(steamID, 730);
+
+            //starts thread that handles tradeoffers
+            SpawnTradeOfferPollingThread();
 
 
 
@@ -180,6 +218,7 @@ namespace TradeBot.Bot
         private void OnLoggedOff(SteamUser.LoggedOffCallback callback)
         {
             Console.WriteLine("Logged off of Steam: {0}", callback.Result);
+            CancelTradeOfferPollingThread();
             config.working = false;
             config.save();
         }
@@ -241,7 +280,7 @@ namespace TradeBot.Bot
         private void OnMessageProcessed(object sender, EventArgs e)
         {
             Message message = (Message)e;
-            switch(message.messageType)
+            switch (message.messageType)
             {
                 case MessageType.HELP:
                     steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Available commands: \n!help, \n!sell, \n!buy, \n!changewalletaddress"); break;
@@ -260,7 +299,7 @@ namespace TradeBot.Bot
         {
             changeStatus();
         }
-        
+
         private void changeStatus()
         {
             switch (config.status)
@@ -271,6 +310,51 @@ namespace TradeBot.Bot
                 case BotStatus.LOOKINGTOTRADE: steamFriends.SetPersonaState(EPersonaState.LookingToTrade); break;
                 default: steamFriends.SetPersonaState(EPersonaState.Offline); break;
             }
+        }
+
+        //TradeOffers
+        private void SpawnTradeOfferPollingThread()
+        {
+            if (tradeOfferThread == null)
+            {
+                tradeOfferThread = new Thread(PollOffers);
+                tradeOfferThread.Start();
+            }
+        }
+
+        protected void CancelTradeOfferPollingThread()
+        {
+            tradeOfferThread = null;
+        }
+
+        private void PollOffers()
+        {
+            while (tradeOfferThread == Thread.CurrentThread)
+            {
+                Thread.Sleep(10000);
+
+                //set parameters for data you want to receive
+                var recData = new Dictionary<string, string>
+                {
+                    {"get_received_offers", "1"},
+                    {"active_only", "1"},
+                    {"time_historical_cutoff", "999999999999"}
+                };
+
+                var offers = offerHandler.GetTradeOffers(recData).TradeOffersReceived;
+
+                Console.WriteLine("Number of items in CS:GO equipment: {0}", steamInventory.AssetCount().ToString());
+
+                if (offers == null)
+                    continue;
+
+                Console.WriteLine("Pending offers:");
+                foreach (CEconTradeOffer cEconTradeOffer in offers)
+                {
+                    Console.WriteLine("Offer from user: {0}", cEconTradeOffer.AccountIdOther.ToString());
+                }
+            }
+
         }
     }
 }

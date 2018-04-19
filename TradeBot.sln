@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.27130.2027
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TradeBot", "TradeBot\TradeBot.csproj", "{6440179F-D082-4C20-BCFA-0C94AB7C47F6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TradeBotTests", "TradeBotTests\TradeBotTests.csproj", "{57C406C3-03BF-441E-992C-ECC44DE86450}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{6440179F-D082-4C20-BCFA-0C94AB7C47F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6440179F-D082-4C20-BCFA-0C94AB7C47F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6440179F-D082-4C20-BCFA-0C94AB7C47F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57C406C3-03BF-441E-992C-ECC44DE86450}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57C406C3-03BF-441E-992C-ECC44DE86450}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57C406C3-03BF-441E-992C-ECC44DE86450}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57C406C3-03BF-441E-992C-ECC44DE86450}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
