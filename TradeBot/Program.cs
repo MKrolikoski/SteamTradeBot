@@ -11,23 +11,19 @@ namespace TradeBot
     {
         static void Main(string[] args)
         {
-            BotCore bot = new BotCore();
+            //BotCore bot = new BotCore();
             /*
             DataAccess db = new DataAccess();
+            User user = new User("steamID1", "walletAddress1");
+            User user2 = new User("steamID2", "walletAddress2");
+            User user3 = new User("steamID3", "walletAddress3");
+            Transaction transaction = new Transaction(2,1,false,false,false);
+            Tradeoffer tradeOffer = new Tradeoffer("item1", 1, 1.0);
 
-            List<User> users = db.GetAllUsers();
-
-            foreach(User s in users)
-            {
-                Console.WriteLine(s);
-            }
-
-            User user = db.GetUser("testSteamID1");
-
-            Console.WriteLine(user);
-
-            Console.WriteLine(db.AddUser(user));
-            Console.WriteLine(db.DeleteUser(user));
+            db.AddTradeOffer(tradeOffer);
+            db.AddUser(user);
+            db.AddUser(user2);
+            db.AddTransaction(transaction);
             */
         }
     }
