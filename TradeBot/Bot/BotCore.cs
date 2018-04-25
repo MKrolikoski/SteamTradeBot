@@ -5,7 +5,7 @@ using System.Threading;
 using SteamKit2;
 using Newtonsoft.Json;
 using TradeBot.Messages;
-using SteamToolkit;
+using TradeBot.Web;
 using SteamToolkit.Trading;
 using System.Collections.Generic;
 
@@ -274,6 +274,7 @@ namespace TradeBot.Bot
             if (callback.EntryType == EChatEntryType.ChatMsg)
             {
                 messageHandler.processMessage(callback.Message, callback.Sender);
+
             }
         }
 
