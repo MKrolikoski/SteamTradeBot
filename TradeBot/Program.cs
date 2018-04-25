@@ -1,9 +1,4 @@
-﻿using System.Collections.Generic;
-using TradeBot.Bot;
-using TradeBot.Database;
-using TradeBot.Entity;
-using MySql.Data.MySqlClient;
-using System;
+﻿using TradeBot.Bot;
 
 namespace TradeBot
 {
@@ -11,7 +6,9 @@ namespace TradeBot
     {
         static void Main(string[] args)
         {
-            //BotCore bot = new BotCore();
+            BotCore bot = new BotCore();
+
+
             /*
             DataAccess db = new DataAccess();
             User user = new User("steamID1", "walletAddress1");

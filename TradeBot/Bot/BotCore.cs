@@ -5,9 +5,9 @@ using System.Threading;
 using SteamKit2;
 using Newtonsoft.Json;
 using TradeBot.Messages;
-using TradeBot.Web;
 using SteamToolkit.Trading;
 using System.Collections.Generic;
+using TradeBot.Bitstamp;
 
 namespace TradeBot.Bot
 {
@@ -17,23 +17,18 @@ namespace TradeBot.Bot
 
         private EconServiceHandler offerHandler;
         private MarketHandler marketHandler;
-
+        private MessageHandler messageHandler;
+        private BitstampHandler bitstampHandler;
 
         private SteamClient steamClient;
         private SteamUser steamUser;
         private SteamFriends steamFriends;
-
+        private SteamID steamID;
 
         private string authCode, twoFactorAuth;
 
-        private SteamID steamID;
-
         private Inventory steamInventory;
-
-
         private BotConfig config;
-
-        private MessageHandler messageHandler;
 
         private Thread tradeOfferThread;
 
@@ -60,8 +55,8 @@ namespace TradeBot.Bot
 
             // create the callback manager which will route callbacks to function calls
             callbackManager = new CallbackManager(steamClient);
-
             messageHandler = new MessageHandler();
+            bitstampHandler = new BitstampHandler();
 
             // get the steamuser handler, which is used for logging on after successfully connecting
             steamUser = steamClient.GetHandler<SteamUser>();
@@ -286,7 +281,7 @@ namespace TradeBot.Bot
                 case MessageType.HELP:
                     steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Available commands: \n!help, \n!sell, \n!buy, \n!changewalletaddress"); break;
                 case MessageType.SELL:
-                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Sell option coming soon.."); break;
+                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Sell option coming soon.."); bitstampHandler.checkBalance(); break;
                 case MessageType.BUY:
                     steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Buy option coming soon.."); break;
                 case MessageType.CHANGE_WALLET_ADDRESS:

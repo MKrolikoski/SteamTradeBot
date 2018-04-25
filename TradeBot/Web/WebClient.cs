@@ -18,7 +18,7 @@ namespace TradeBot.Web
             this.data = data;
         }
 
-        public string getRequest()
+        public string getResponse()
         {
             string response = null;
 
