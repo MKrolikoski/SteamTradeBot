@@ -24,6 +24,9 @@ namespace TradeBot.Bot
         [JsonProperty("password")]
         public string password { get; set; }
 
+        [JsonProperty("shared_secret")]
+        public string shared_secret { get; set; }
+
         [JsonProperty("api_key")]
         public string api_key { get; set; }
 
@@ -51,6 +54,7 @@ namespace TradeBot.Bot
             sb.Append("  \"status\": \"ONLINE\",\r\n");
             sb.Append("  \"login\": \"\",\r\n");
             sb.Append("  \"password\": \"\",\r\n");
+            sb.Append("  \"shared_secret\": \"\",\r\n");
             sb.Append("  \"api_key\": \"\",\r\n");
             sb.Append("  \"transaction_toll\": 0.1\r\n");
             sb.Append("}\r\n");

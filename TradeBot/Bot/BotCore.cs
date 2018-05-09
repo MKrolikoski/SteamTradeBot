@@ -8,6 +8,10 @@ using TradeBot.Messages;
 using SteamToolkit.Trading;
 using System.Collections.Generic;
 using TradeBot.Bitstamp;
+using SteamAuth;
+using TradeBot.Database;
+using TradeBot.Entity;
+using System.Text;
 
 namespace TradeBot.Bot
 {
@@ -19,13 +23,18 @@ namespace TradeBot.Bot
         private MarketHandler marketHandler;
         private MessageHandler messageHandler;
         private BitstampHandler bitstampHandler;
+        private DatabaseHandler databaseHandler;
 
         private SteamClient steamClient;
         private SteamUser steamUser;
         private SteamFriends steamFriends;
         private SteamID steamID;
 
-        private string authCode, twoFactorAuth;
+        #region steamguard
+        private SteamGuardAccount steamGuardAccount;
+        #endregion
+
+        private string authCode, steamGuardCode;
 
         private Inventory steamInventory;
         private BotConfig config;
@@ -38,6 +47,8 @@ namespace TradeBot.Bot
             if (!File.Exists("config.cfg"))
             {
                 config.createNew();
+                if(File.Exists("sentry.bin"))
+                    File.Delete("sentry.bin");
             }
             config = JsonConvert.DeserializeObject<BotConfig>(File.ReadAllText("config.cfg"));
 
@@ -55,21 +66,25 @@ namespace TradeBot.Bot
 
             // create the callback manager which will route callbacks to function calls
             callbackManager = new CallbackManager(steamClient);
+
             messageHandler = new MessageHandler();
             bitstampHandler = new BitstampHandler();
+            databaseHandler = new DatabaseHandler();
 
             // get the steamuser handler, which is used for logging on after successfully connecting
             steamUser = steamClient.GetHandler<SteamUser>();
 
             steamFriends = steamClient.GetHandler<SteamFriends>();
 
+            steamGuardAccount = new SteamGuardAccount();
+
             offerHandler = new EconServiceHandler(config.api_key);
             marketHandler = new MarketHandler();
 
 
-        // register a few callbacks we're interested in
-        // these are registered upon creation to a callback manager, which will then route the callbacks
-        // to the functions specified
+            // register a few callbacks we're interested in
+            // these are registered upon creation to a callback manager, which will then route the callbacks
+            // to the functions specified
             callbackManager.Subscribe<SteamClient.ConnectedCallback>(OnConnected);
             callbackManager.Subscribe<SteamClient.DisconnectedCallback>(OnDisconnected);
 
@@ -109,7 +124,6 @@ namespace TradeBot.Bot
 
 
 
-
         private void OnConnected(SteamClient.ConnectedCallback callback)
         {
             Console.WriteLine("Connected to Steam! Logging in...");
@@ -134,7 +148,7 @@ namespace TradeBot.Bot
 
                 // if the account is using 2-factor auth, we'll provide the two factor code instead
                 // this will also be null on our first logon attempt
-                TwoFactorCode = twoFactorAuth,
+                TwoFactorCode = steamGuardCode,
 
                 // our subsequent logons use the hash of the sentry file as proof of ownership of the file
                 // this will also be null for our first (no authcode) and second (authcode only) logon attempts
@@ -163,14 +177,24 @@ namespace TradeBot.Bot
             bool isSteamGuard = callback.Result == EResult.AccountLogonDenied;
             bool is2FA = callback.Result == EResult.AccountLoginDeniedNeedTwoFactor;
 
+            //SteamGuard enabled -> need to generate code
             if (isSteamGuard || is2FA)
             {
                 Console.WriteLine("This account is SteamGuard protected!");
 
                 if (is2FA)
                 {
-                    Console.Write("Please enter your 2 factor auth code from your authenticator app: ");
-                    twoFactorAuth = Console.ReadLine();
+                    if(config.shared_secret.Equals(""))
+                    {
+                        Console.Write("Please enter SteamGuard code from you authentication device: ");
+                        steamGuardCode = Console.ReadLine();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Generating SteamGuard code..");
+                        steamGuardAccount.SharedSecret = config.shared_secret;
+                        steamGuardCode = steamGuardAccount.GenerateSteamGuardCode();
+                    }
                 }
                 else
                 {
@@ -220,48 +244,47 @@ namespace TradeBot.Bot
 
         private void OnMachineAuth(SteamUser.UpdateMachineAuthCallback callback)
         {
-            Console.WriteLine("Updating sentryfile...");
-
-            // write out our sentry file
-            // ideally we'd want to write to the filename specified in the callback
-            // but then this sample would require more code to find the correct sentry file to read during logon
-            // for the sake of simplicity, we'll just use "sentry.bin"
-
-            int fileSize;
-            byte[] sentryHash;
-            using (var fs = File.Open("sentry.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            if (authCode != null)
             {
-                fs.Seek(callback.Offset, SeekOrigin.Begin);
-                fs.Write(callback.Data, 0, callback.BytesToWrite);
-                fileSize = (int)fs.Length;
+                Console.WriteLine("Updating sentryfile...");
 
-                fs.Seek(0, SeekOrigin.Begin);
-                using (var sha = SHA1.Create())
+                // write out our sentry file
+                int fileSize;
+                byte[] sentryHash;
+                using (var fs = File.Open("sentry.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
                 {
-                    sentryHash = sha.ComputeHash(fs);
+                    fs.Seek(callback.Offset, SeekOrigin.Begin);
+                    fs.Write(callback.Data, 0, callback.BytesToWrite);
+                    fileSize = (int)fs.Length;
+
+                    fs.Seek(0, SeekOrigin.Begin);
+                    using (var sha = SHA1.Create())
+                    {
+                        sentryHash = sha.ComputeHash(fs);
+                    }
                 }
+
+                // inform the steam servers that we're accepting this sentry file
+                steamUser.SendMachineAuthResponse(new SteamUser.MachineAuthDetails
+                {
+                    JobID = callback.JobID,
+
+                    FileName = callback.FileName,
+
+                    BytesWritten = callback.BytesToWrite,
+                    FileSize = fileSize,
+                    Offset = callback.Offset,
+
+                    Result = EResult.OK,
+                    LastError = 0,
+
+                    OneTimePassword = callback.OneTimePassword,
+
+                    SentryFileHash = sentryHash,
+                });
+
+                Console.WriteLine("Done!");
             }
-
-            // inform the steam servers that we're accepting this sentry file
-            steamUser.SendMachineAuthResponse(new SteamUser.MachineAuthDetails
-            {
-                JobID = callback.JobID,
-
-                FileName = callback.FileName,
-
-                BytesWritten = callback.BytesToWrite,
-                FileSize = fileSize,
-                Offset = callback.Offset,
-
-                Result = EResult.OK,
-                LastError = 0,
-
-                OneTimePassword = callback.OneTimePassword,
-
-                SentryFileHash = sentryHash,
-            });
-
-            Console.WriteLine("Done!");
         }
 
         private void OnMessageReceived(SteamFriends.FriendMsgCallback callback)
@@ -279,13 +302,39 @@ namespace TradeBot.Bot
             switch (message.messageType)
             {
                 case MessageType.HELP:
-                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Available commands: \n!help, \n!sell, \n!buy, \n!changewalletaddress"); break;
+                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Available commands: \n!help, \n!sell, \n!buy, \n!setethaddress, \n!info, \n!confirm"); break;
                 case MessageType.SELL:
-                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Sell option coming soon.."); bitstampHandler.checkBalance(); break;
+                    if (createTransaction(message.from, message.parameters, message.messageType))
+                        steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Transaction added succesfully.");
+                    break;
                 case MessageType.BUY:
-                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Buy option coming soon.."); break;
-                case MessageType.CHANGE_WALLET_ADDRESS:
-                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Changewalletaddress option coming soon.."); break;
+                    if(createTransaction(message.from, message.parameters, message.messageType))
+                        steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Transaction added succesfully.");
+                    break;
+                case MessageType.SETETHADDRESS:
+                    if(databaseHandler.setEthAddress(message.from.ToString(), message.parameters[0]))
+                    {
+                        string msg = "Successfully changed ETH address to: " + message.parameters[0];
+                        steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, msg);
+                    }
+                    else
+                    {
+                        steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Error while changing ETH address.");
+                    }
+                    break;
+                case MessageType.CONFIRM:
+                    //add method to handle transaction confirmation
+                    if(databaseHandler.ConfirmTransaction(message.from.ToString()))
+                    {
+                        steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Transaction confirmed.");
+                    }
+                    else
+                    {
+                        steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "No transaction to confirm.\nTo add a transaction use !sell or !buy commands.");
+                    }
+                    break;
+                case MessageType.INFO:
+                    printInfo(message.from); break;
                 default:
                     steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Unknown command. Type !help for the list of commands."); break;
             }
@@ -350,7 +399,91 @@ namespace TradeBot.Bot
                     Console.WriteLine("Offer from user: {0}", cEconTradeOffer.AccountIdOther.ToString());
                 }
             }
+        }
 
+        private void printInfo(SteamID steamID)
+        {
+            User user = databaseHandler.GetUser(steamID.ToString());
+            if(!user.WalletAddress.Equals(""))
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append("Your ETH address: ");
+                sb.Append(user.WalletAddress);
+                sb.AppendLine();
+                Transaction transaction = databaseHandler.GetUserTransaction(steamID.ToString());
+                if (transaction != null)
+                {
+                    Tradeoffer offer = databaseHandler.GetUserTradeOffer(steamID.ToString());
+                    sb.Append("CURRENT TRANSACTION\nType: ");
+                    if (transaction.Sell)
+                        sb.Append("SELL");
+                    else
+                        sb.Append("BUY");
+                    sb.AppendLine();
+                    sb.Append("Created: ");
+                    sb.Append(transaction.CreationDate.ToString("MM/dd/yyyy"));
+                    sb.AppendLine();
+                    sb.Append("Status: ");
+                    if (transaction.Confirmed)
+                        sb.Append("Status: CONFIRMED");
+                    else
+                        sb.Append("NOT CONFIRMED");
+                    sb.AppendLine();
+                    sb.Append("Number of keys: ");
+                    sb.Append(offer.Amount);
+                    sb.AppendLine();
+                    sb.Append("ETH value: ");
+                    //TODO
+                    sb.Append("TODO");
+                    sb.AppendLine();
+
+                    steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, sb.ToString());
+                }
+                else
+                {
+                    steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, "No pending transaction.\nTo add a transaction use !sell or !buy commands.");
+                }
+            }
+            else
+            {
+                steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, "Please set your ETH address with !setethaddress comand.");
+            }
+        }
+
+        private bool createTransaction(SteamID steamID, List<string> parameters, MessageType transactionType)
+        {
+            try
+            {
+                User user = databaseHandler.GetUser(steamID.ToString());
+                if (user.WalletAddress.Equals(""))
+                {
+                    steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, "Please set your ETH address with !setethaddress comand.");
+                    return false;
+                }
+                //delete previous transaction if exists
+                if (databaseHandler.GetUserTransaction(user.SteamID) != null)
+                {
+                    databaseHandler.DeleteUserTransaction(user.SteamID);
+                }
+                //TODO      
+                double costPerOne = 1.0;
+                //
+                Transaction transaction = new Transaction(user.UserID, DateTime.Now, false, false, false);
+                if (transactionType == MessageType.BUY)
+                    transaction.Buy = true;
+                else
+                    transaction.Sell = true;
+                databaseHandler.AddTransaction(transaction);
+                transaction = databaseHandler.GetUserTransaction(user.SteamID);
+
+                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, Convert.ToInt32(parameters[0]), costPerOne);
+                databaseHandler.AddTradeOffer(tradeoffer);
+            }catch(Exception e)
+            {
+                steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, "Error while adding transaction.");
+                return false;
+            }
+            return true;
         }
     }
 }

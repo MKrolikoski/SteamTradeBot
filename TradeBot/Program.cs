@@ -1,4 +1,9 @@
-﻿using TradeBot.Bot;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using TradeBot.Bot;
+using TradeBot.Database;
+using TradeBot.Entity;
 
 namespace TradeBot
 {
@@ -7,6 +12,11 @@ namespace TradeBot
         static void Main(string[] args)
         {
             BotCore bot = new BotCore();
+
+            //DatabaseHandler db = new DatabaseHandler();
+            //Transaction tr = db.GetUserTransaction("steamID");
+            //Console.WriteLine("Cofnirmed: {0}", tr.Confirmed);
+            //Console.ReadKey();
 
 
             /*

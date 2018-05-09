@@ -11,7 +11,9 @@ namespace TradeBot.Messages
         SELL,
         BUY,
         HELP,
-        CHANGE_WALLET_ADDRESS,
+        SETETHADDRESS,
+        CONFIRM,
+        INFO,
         UNKNOWN
     }
 }

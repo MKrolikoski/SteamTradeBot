@@ -10,7 +10,7 @@ namespace TradeBot.Entity
     {
         public int TradeofferID { get; set; }
 
-        public string ItemID { get; set; }
+        public int TransactionID { get; set; }
 
         public int Amount { get; set; }
 
@@ -18,9 +18,9 @@ namespace TradeBot.Entity
 
         public Tradeoffer() { }
 
-        public Tradeoffer(string ItemID, int Amount, double CostPerOne)
+        public Tradeoffer(int TransactionID, int Amount, double CostPerOne)
         {
-            this.ItemID = ItemID;
+            this.TransactionID = TransactionID;
             this.Amount = Amount;
             this.CostPerOne = CostPerOne;
         }

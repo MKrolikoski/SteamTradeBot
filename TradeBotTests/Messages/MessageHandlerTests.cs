@@ -56,12 +56,12 @@ namespace TradeBot.Messages.Tests
         [TestMethod()]
         public void processChangeWalletAddressMessageTest()
         {
-            string message = "!changewalletaddress 1232190xsa0314";
+            string message = "!setethaddress 1232190xsa0314";
             SteamID from;
             Utils.TrySetSteamID("198662804", out from);
             List<string> parameters = new List<string>();
             parameters.Add("1232190xsa0314");
-            Message expectedResponse = new Message(MessageType.CHANGE_WALLET_ADDRESS, parameters, from);
+            Message expectedResponse = new Message(MessageType.SETETHADDRESS, parameters, from);
             MessageHandler messageHandler = new MessageHandler();
             Message actualResponse = messageHandler.parseMessage(message, from);
             Assert.AreEqual(expectedResponse, actualResponse);
@@ -82,11 +82,11 @@ namespace TradeBot.Messages.Tests
         [TestMethod()]
         public void processDifferentCaseMessageTest()
         {
-            string message = "!ChAngeWALLETaddreSS";
+            string message = "!SeTETHaddreSS";
             SteamID from;
             Utils.TrySetSteamID("198662804", out from);
             List<string> parameters = new List<string>();
-            Message expectedResponse = new Message(MessageType.CHANGE_WALLET_ADDRESS, parameters, from);
+            Message expectedResponse = new Message(MessageType.SETETHADDRESS, parameters, from);
             MessageHandler messageHandler = new MessageHandler();
             Message actualResponse = messageHandler.parseMessage(message, from);
             Assert.AreEqual(expectedResponse, actualResponse);

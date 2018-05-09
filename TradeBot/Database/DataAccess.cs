@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TradeBot.Entity;
 using Dapper;
 using System.Data;
@@ -47,6 +45,23 @@ namespace TradeBot.Database
             }
         }
 
+        public bool UpdateUser(User user)
+        {
+            using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
+            {
+                User userDB = GetUser(user.SteamID);
+                if (userDB != null)
+                {
+                    connection.Query<Transaction>($"UPDATE Users SET WalletAddress='{user.WalletAddress}' WHERE UserID='{user.UserID}'");
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+
 
         public bool DeleteUser(User user)
         {
@@ -56,6 +71,7 @@ namespace TradeBot.Database
                 if (userDB != null)
                 {
                     connection.Query<User>($"DELETE FROM Users WHERE Users.UserID='{userDB.UserID}' OR Users.SteamID='{user.SteamID}'");
+                    DeleteTradeOffer(GetUserTradeOffer(userDB.SteamID));
                     return true;
                 }
                 return false;
@@ -77,15 +93,40 @@ namespace TradeBot.Database
             }
         }
 
-        public List<Transaction> GetUserTransactions(string steamID)
+        //User is allowed only one transaction at a time, adding new overrides previous one
+        //public List<Transaction> GetUserTransactions(string steamID)
+        //{
+        //    using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
+        //    {
+        //        User user = GetUser(steamID);
+        //        if(user != null)
+        //        {
+        //            try { 
+        //                return connection.Query<Transaction>($"SELECT * FROM Transactions WHERE Transactions.UserID='{user.UserID}'").ToList();
+        //            }
+        //            catch (InvalidOperationException)
+        //            {
+        //                return null;
+        //            }
+        //        }
+        //        else
+        //        {
+        //            return null;
+        //        }
+                
+        //    }
+        //}
+
+        public Transaction GetUserTransaction(string steamID)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
             {
                 User user = GetUser(steamID);
-                if(user != null)
+                if (user != null)
                 {
-                    try { 
-                        return connection.Query<Transaction>($"SELECT * FROM Transactions WHERE Transactions.UserID='{user.UserID}'").ToList();
+                    try
+                    {
+                        return connection.Query<Transaction>($"SELECT * FROM Transactions WHERE Transactions.UserID='{user.UserID}'").Single();
                     }
                     catch (InvalidOperationException)
                     {
@@ -96,7 +137,7 @@ namespace TradeBot.Database
                 {
                     return null;
                 }
-                
+
             }
         }
 
@@ -107,7 +148,7 @@ namespace TradeBot.Database
                 Transaction transactionInDB = GetTransaction(transaction.TransactionID);
                 if (transactionInDB == null)
                 {
-                    connection.Query<Transaction>($"INSERT INTO Transactions(UserID,TradeOfferID,Sell,Buy,Completed) VALUES ('{transaction.UserID}','{transaction.TradeofferID}','{transaction.Sell}','{transaction.Buy}','{transaction.Completed}')");
+                    connection.Query<Transaction>($"INSERT INTO Transactions(UserID, CreationDate, Sell,Buy,Confirmed) VALUES ('{transaction.UserID}','{transaction.CreationDate.ToString("yyyy-MM-dd")}',{transaction.Sell.ToString()},{transaction.Buy.ToString()},{transaction.Confirmed.ToString()})");
                     return true;
                 }
                 else
@@ -123,16 +164,29 @@ namespace TradeBot.Database
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
             {
                 Transaction transactionInDB = GetTransaction(transaction.TransactionID);
-                if (transactionInDB == null)
+                if (transactionInDB != null)
                 {
-                    connection.Query<Transaction>($"UPDATE Transactions SET Sell='{transaction.Sell}',Buy='{transaction.Buy}',Completed='{transaction.Completed}' WHERE TransactionID='{transaction.TransactionID}'");
+                    connection.Query<Transaction>($"UPDATE Transactions SET CreationDate='{transaction.CreationDate.ToString("yyyy-MM-dd")}', Sell={transaction.Sell.ToString()},Buy={transaction.Buy.ToString()},Confirmed={transaction.Confirmed.ToString()} WHERE TransactionID='{transaction.TransactionID}'");
                     return true;
                 }
                 else
                 {
                     return false;
                 }
+            }
+        }
 
+        public bool DeleteTransaction(Transaction transaction)
+        {
+            using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
+            {
+                Transaction transactionDB = GetTransaction(transaction.TransactionID);
+                if (transactionDB != null)
+                {
+                    connection.Query<User>($"DELETE FROM Transactions WHERE Transactions.TransactionID='{transactionDB.TransactionID}'");
+                    return true;
+                }
+                return false;
             }
         }
 
@@ -141,12 +195,37 @@ namespace TradeBot.Database
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
             {
                 try { 
-                    return connection.Query<Tradeoffer>($"SELECT * FROM TradeOffer WHERE TradeOffer.TradeOfferID='{tradeOfferID}'").Single();
+                    return connection.Query<Tradeoffer>($"SELECT * FROM TradeOffers WHERE TradeOffers.TradeOfferID='{tradeOfferID}'").Single();
                 }
                     catch (InvalidOperationException)
                 {
                     return null;
                 }
+            }
+        }
+
+
+        public Tradeoffer GetUserTradeOffer(string steamID)
+        {
+            using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
+            {
+                User user = GetUser(steamID);
+                if (user != null)
+                {
+                    try
+                    {
+                        return connection.Query<Tradeoffer>($"select TradeOfferID, Amount, CostPerOne from Users natural join Transactions natural join TradeOffers WHERE Users.UserID='{user.UserID}'").Single();
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return null;
+                    }
+                }
+                else
+                {
+                    return null;
+                }
+
             }
         }
 
@@ -157,7 +236,7 @@ namespace TradeBot.Database
                 Tradeoffer tradeOfferInDB = GetTradeOffer(tradeoffer.TradeofferID);
                 if (tradeOfferInDB == null)
                 {
-                    connection.Query<Tradeoffer>($"INSERT INTO TradeOffer(ItemID,Amount,CostPerOne) VALUES ('{tradeoffer.ItemID}','{tradeoffer.Amount}','{tradeoffer.CostPerOne}')");
+                    connection.Query<Tradeoffer>($"INSERT INTO TradeOffers(TransactionID, Amount,CostPerOne) VALUES ('{tradeoffer.TransactionID}','{tradeoffer.Amount}','{tradeoffer.CostPerOne}')");
                     return true;
                 }
                 else
@@ -172,9 +251,9 @@ namespace TradeBot.Database
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
             {
                 Tradeoffer tradeOfferInDB = GetTradeOffer(tradeoffer.TradeofferID);
-                if (tradeOfferInDB == null)
+                if (tradeOfferInDB != null)
                 {
-                    connection.Query<Tradeoffer>($"UPDATE TradeOffer SET ItemID='{tradeoffer.ItemID}',Amount='{tradeoffer.Amount}',CostPerOne='{tradeoffer.CostPerOne}' WHERE TradeOfferID='{tradeoffer.TradeofferID}'");
+                    connection.Query<Tradeoffer>($"UPDATE TradeOffers SET Amount='{tradeoffer.Amount}',CostPerOne='{tradeoffer.CostPerOne}' WHERE TradeOfferID='{tradeoffer.TradeofferID}'");
                     return true;
                 }
                 else
@@ -184,5 +263,18 @@ namespace TradeBot.Database
             }
         }
 
+        public bool DeleteTradeOffer(Tradeoffer tradeoffer)
+        {
+            using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
+            {
+                Tradeoffer tradeofferDB = GetTradeOffer(tradeoffer.TradeofferID);
+                if (tradeofferDB != null)
+                {
+                    connection.Query<User>($"DELETE FROM TradeOffers WHERE TradeOffers.TradeOfferID='{tradeofferDB.TradeofferID}'");
+                    return true;
+                }
+                return false;
+            }
+        }
     }
 }

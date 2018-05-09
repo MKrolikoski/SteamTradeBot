@@ -48,7 +48,9 @@ namespace TradeBot.Messages
                     case "!help": return new Message(MessageType.HELP, parameters, from);
                     case "!sell": return new Message(MessageType.SELL, parameters, from);
                     case "!buy": return new Message(MessageType.BUY, parameters, from);
-                    case "!changewalletaddress": return new Message(MessageType.CHANGE_WALLET_ADDRESS, parameters, from);
+                    case "!setethaddress": return new Message(MessageType.SETETHADDRESS, parameters, from);
+                    case "!confirm": return new Message(MessageType.CONFIRM, parameters, from);
+                    case "!info": return new Message(MessageType.INFO, parameters, from);
                     default: parameters = new List<string>();  return new Message(MessageType.UNKNOWN, parameters, from);
                 }
             }catch(Exception e)
@@ -64,7 +66,6 @@ namespace TradeBot.Messages
             foreach (string s in p)
             { 
                 parameters.Add(s);
-                Console.WriteLine("---{0}---", s);
             }
             return parameters;
         }

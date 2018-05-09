@@ -50,6 +50,9 @@
     <Reference Include="RestSharp, Version=106.2.2.0, Culture=neutral, PublicKeyToken=598062e77f915f75, processorArchitecture=MSIL">
       <HintPath>..\packages\RestSharp.106.2.2\lib\net452\RestSharp.dll</HintPath>
     </Reference>
+    <Reference Include="SteamAuth, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SteamAuth.3.0.0\lib\net45\SteamAuth.dll</HintPath>
+    </Reference>
     <Reference Include="SteamKit2, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\SteamKit2.2.0.0\lib\netstandard2.0\SteamKit2.dll</HintPath>
     </Reference>
@@ -91,6 +94,7 @@
     <Compile Include="Bot\BotStatus.cs" />
     <Compile Include="Bot\Utils.cs" />
     <Compile Include="Database\DataAccess.cs" />
+    <Compile Include="Database\DatabaseHandler.cs" />
     <Compile Include="Database\Helper.cs" />
     <Compile Include="Entity\Tradeoffer.cs" />
     <Compile Include="Entity\Transaction.cs" />
