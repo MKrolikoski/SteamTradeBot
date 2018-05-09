@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using TradeBot.Bitstamp;
 using TradeBot.Bot;
 using TradeBot.Database;
 using TradeBot.Entity;
+using TradeBot.Web;
 
 namespace TradeBot
 {
@@ -12,6 +14,7 @@ namespace TradeBot
         static void Main(string[] args)
         {
             BotCore bot = new BotCore();
+
 
             //DatabaseHandler db = new DatabaseHandler();
             //Transaction tr = db.GetUserTransaction("steamID");

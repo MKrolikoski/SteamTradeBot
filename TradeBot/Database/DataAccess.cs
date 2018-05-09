@@ -5,6 +5,7 @@ using TradeBot.Entity;
 using Dapper;
 using System.Data;
 using MySql.Data.MySqlClient;
+using System.Globalization;
 
 namespace TradeBot.Database
 {
@@ -214,7 +215,7 @@ namespace TradeBot.Database
                 {
                     try
                     {
-                        return connection.Query<Tradeoffer>($"select TradeOfferID, Amount, CostPerOne from Users natural join Transactions natural join TradeOffers WHERE Users.UserID='{user.UserID}'").Single();
+                        return connection.Query<Tradeoffer>($"select TradeOfferID, Amount, CostPerOne, Accepted from Users natural join Transactions natural join TradeOffers WHERE Users.UserID='{user.UserID}'").Single();
                     }
                     catch (InvalidOperationException)
                     {
@@ -236,7 +237,7 @@ namespace TradeBot.Database
                 Tradeoffer tradeOfferInDB = GetTradeOffer(tradeoffer.TradeofferID);
                 if (tradeOfferInDB == null)
                 {
-                    connection.Query<Tradeoffer>($"INSERT INTO TradeOffers(TransactionID, Amount,CostPerOne) VALUES ('{tradeoffer.TransactionID}','{tradeoffer.Amount}','{tradeoffer.CostPerOne}')");
+                    connection.Query<Tradeoffer>($"INSERT INTO TradeOffers(TransactionID, Amount,CostPerOne, Accepted) VALUES ('{tradeoffer.TransactionID}','{tradeoffer.Amount}',{tradeoffer.CostPerOne.ToString(CultureInfo.InvariantCulture)}, {tradeoffer.Accepted.ToString()})");
                     return true;
                 }
                 else
@@ -253,7 +254,7 @@ namespace TradeBot.Database
                 Tradeoffer tradeOfferInDB = GetTradeOffer(tradeoffer.TradeofferID);
                 if (tradeOfferInDB != null)
                 {
-                    connection.Query<Tradeoffer>($"UPDATE TradeOffers SET Amount='{tradeoffer.Amount}',CostPerOne='{tradeoffer.CostPerOne}' WHERE TradeOfferID='{tradeoffer.TradeofferID}'");
+                    connection.Query<Tradeoffer>($"UPDATE TradeOffers SET Amount='{tradeoffer.Amount}',CostPerOne={tradeoffer.CostPerOne.ToString(CultureInfo.InvariantCulture)}, Accepted={tradeoffer.Accepted.ToString()} WHERE TradeOfferID='{tradeoffer.TradeofferID}'");
                     return true;
                 }
                 else

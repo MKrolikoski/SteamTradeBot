@@ -96,6 +96,7 @@
     <Compile Include="Database\DataAccess.cs" />
     <Compile Include="Database\DatabaseHandler.cs" />
     <Compile Include="Database\Helper.cs" />
+    <Compile Include="Database\TransactionStage.cs" />
     <Compile Include="Entity\Tradeoffer.cs" />
     <Compile Include="Entity\Transaction.cs" />
     <Compile Include="Entity\User.cs" />

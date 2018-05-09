@@ -16,13 +16,16 @@ namespace TradeBot.Entity
 
         public double CostPerOne { get; set; }
 
+        public bool Accepted { get; set; }
+
         public Tradeoffer() { }
 
-        public Tradeoffer(int TransactionID, int Amount, double CostPerOne)
+        public Tradeoffer(int TransactionID, int Amount, double CostPerOne, bool Accepted)
         {
             this.TransactionID = TransactionID;
             this.Amount = Amount;
             this.CostPerOne = CostPerOne;
+            this.Accepted = Accepted;
         }
     }
 }

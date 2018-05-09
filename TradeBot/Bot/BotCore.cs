@@ -12,6 +12,7 @@ using SteamAuth;
 using TradeBot.Database;
 using TradeBot.Entity;
 using System.Text;
+using System.Globalization;
 
 namespace TradeBot.Bot
 {
@@ -302,6 +303,17 @@ namespace TradeBot.Bot
             switch (message.messageType)
             {
                 case MessageType.HELP:
+                    //TODELETE
+                    Transaction transasaction = databaseHandler.GetUserTransaction(message.from.ToString());
+                    if (transasaction != null)
+                        databaseHandler.DeleteTransaction(transasaction);
+                    User user = databaseHandler.GetUser(message.from.ToString());
+                    if (user == null)
+                    {
+                        user = new User(message.from.ToString(), "");
+                        databaseHandler.AddUser(user);
+                    }
+                    //
                     steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Available commands: \n!help, \n!sell, \n!buy, \n!setethaddress, \n!info, \n!confirm"); break;
                 case MessageType.SELL:
                     if (createTransaction(message.from, message.parameters, message.messageType))
@@ -323,15 +335,7 @@ namespace TradeBot.Bot
                     }
                     break;
                 case MessageType.CONFIRM:
-                    //add method to handle transaction confirmation
-                    if(databaseHandler.ConfirmTransaction(message.from.ToString()))
-                    {
-                        steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Transaction confirmed.");
-                    }
-                    else
-                    {
-                        steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "No transaction to confirm.\nTo add a transaction use !sell or !buy commands.");
-                    }
+                    confirmTransaction(message.from);
                     break;
                 case MessageType.INFO:
                     printInfo(message.from); break;
@@ -388,7 +392,7 @@ namespace TradeBot.Bot
 
                 var offers = offerHandler.GetTradeOffers(recData).TradeOffersReceived;
 
-                Console.WriteLine("Number of items in CS:GO equipment: {0}", steamInventory.AssetCount().ToString());
+                //Console.WriteLine("Number of items in CS:GO equipment: {0}", steamInventory.AssetCount().ToString());
 
                 if (offers == null)
                     continue;
@@ -404,50 +408,54 @@ namespace TradeBot.Bot
         private void printInfo(SteamID steamID)
         {
             User user = databaseHandler.GetUser(steamID.ToString());
-            if(!user.WalletAddress.Equals(""))
+            StringBuilder response = new StringBuilder();
+            if (!user.WalletAddress.Equals(""))
             {
-                StringBuilder sb = new StringBuilder();
-                sb.Append("Your ETH address: ");
-                sb.Append(user.WalletAddress);
-                sb.AppendLine();
-                Transaction transaction = databaseHandler.GetUserTransaction(steamID.ToString());
-                if (transaction != null)
+                response.Append("Your ETH address: ");
+                response.AppendLine(user.WalletAddress);
+                TransactionStage transactionStage = databaseHandler.getTransactionStage(user.SteamID);
+                string status = null;
+                switch(transactionStage)
                 {
-                    Tradeoffer offer = databaseHandler.GetUserTradeOffer(steamID.ToString());
-                    sb.Append("CURRENT TRANSACTION\nType: ");
+                    case TransactionStage.WAITING_FOR_TRANSACTION:
+                        response.AppendLine("No pending transaction.\nTo add a transaction use !sell or !buy commands.");
+                        break;
+                    case TransactionStage.WAITING_FOR_CONFIRMATION:
+                        status = "Waiting for confirmation.";
+                        break;
+                    case TransactionStage.WAITING_FOR_TRADEOFFER:
+                        status = "Waiting for trade offer.";
+                        break;
+                    case TransactionStage.WAITING_FOR_ETH:
+                        status = "Waiting for ETH transfer.";
+                        break;
+                    case TransactionStage.SENDING_ETH:
+                        status = "Sending ETH to your wallet.";
+                        break;
+                }
+                if(status != null)
+                {
+                    Transaction transaction = databaseHandler.GetUserTransaction(user.SteamID);
+                    response.Append("---Transaction details---\nType: ");
                     if (transaction.Sell)
-                        sb.Append("SELL");
+                        response.AppendLine("SELL");
                     else
-                        sb.Append("BUY");
-                    sb.AppendLine();
-                    sb.Append("Created: ");
-                    sb.Append(transaction.CreationDate.ToString("MM/dd/yyyy"));
-                    sb.AppendLine();
-                    sb.Append("Status: ");
-                    if (transaction.Confirmed)
-                        sb.Append("Status: CONFIRMED");
-                    else
-                        sb.Append("NOT CONFIRMED");
-                    sb.AppendLine();
-                    sb.Append("Number of keys: ");
-                    sb.Append(offer.Amount);
-                    sb.AppendLine();
-                    sb.Append("ETH value: ");
-                    //TODO
-                    sb.Append("TODO");
-                    sb.AppendLine();
-
-                    steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, sb.ToString());
-                }
-                else
-                {
-                    steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, "No pending transaction.\nTo add a transaction use !sell or !buy commands.");
-                }
+                        response.AppendLine("BUY");
+                    response.Append("Created: ");
+                    response.AppendLine(transaction.CreationDate.ToString("MM/dd/yyyy"));
+                    response.Append("Number of keys: ");
+                    response.AppendLine("" + databaseHandler.GetUserTradeOffer(user.SteamID).Amount);
+                    response.Append("ETH value: ");
+                    response.AppendLine("" + databaseHandler.getTransactionEthValue(user.SteamID));
+                    response.Append("Status: ");
+                    response.AppendLine(status);
+                }              
             }
             else
             {
-                steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, "Please set your ETH address with !setethaddress comand.");
+                response.AppendLine("Please set your ETH address with !setethaddress comand.");
             }
+            steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, response.ToString());
         }
 
         private bool createTransaction(SteamID steamID, List<string> parameters, MessageType transactionType)
@@ -465,18 +473,28 @@ namespace TradeBot.Bot
                 {
                     databaseHandler.DeleteUserTransaction(user.SteamID);
                 }
-                //TODO      
-                double costPerOne = 1.0;
-                //
+
                 Transaction transaction = new Transaction(user.UserID, DateTime.Now, false, false, false);
+                double costPerOneInUSD;
                 if (transactionType == MessageType.BUY)
+                {
                     transaction.Buy = true;
+                    costPerOneInUSD = config.buy_price;
+                }
                 else
+                {
                     transaction.Sell = true;
+                    costPerOneInUSD = config.sell_price;
+                }
+                double ethPriceForOneUsd = bitstampHandler.getEthPriceForOneUsd();
+                double costPerOneInETH = costPerOneInUSD * ethPriceForOneUsd;
+
+
+                //Console.WriteLine("Cost per one in ETH: {0}", costPerOneInETH);
                 databaseHandler.AddTransaction(transaction);
                 transaction = databaseHandler.GetUserTransaction(user.SteamID);
 
-                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, Convert.ToInt32(parameters[0]), costPerOne);
+                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, Convert.ToInt32(parameters[0]), costPerOneInETH, false);
                 databaseHandler.AddTradeOffer(tradeoffer);
             }catch(Exception e)
             {
@@ -484,6 +502,25 @@ namespace TradeBot.Bot
                 return false;
             }
             return true;
+        }
+
+        private void confirmTransaction(SteamID steamID)
+        {
+            TransactionStage transactionStage = databaseHandler.getTransactionStage(steamID.ToString());
+            StringBuilder response = new StringBuilder();
+            switch(transactionStage)
+            {
+                case TransactionStage.WAITING_FOR_TRANSACTION:
+                    response.AppendLine("No pending transaction.\nTo add a transaction use !sell or !buy commands.");
+                    break;
+                case TransactionStage.WAITING_FOR_CONFIRMATION:
+                    databaseHandler.ConfirmTransaction(steamID.ToString());
+                    response.AppendLine("Transaction confirmed.\nPlease send the trade offer.");
+                    break;
+                default:
+                    response.AppendLine("Transaction already confirmed.\nTo see next step please use !info command."); break;
+            }
+            steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, response.ToString());
         }
     }
 }
