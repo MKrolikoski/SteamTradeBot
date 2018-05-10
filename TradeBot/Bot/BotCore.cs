@@ -62,17 +62,14 @@ namespace TradeBot.Bot
                 config.password = Console.ReadLine();
             }
 
-
             steamClient = new SteamClient();
 
-            // create the callback manager which will route callbacks to function calls
             callbackManager = new CallbackManager(steamClient);
 
             messageHandler = new MessageHandler();
             bitstampHandler = new BitstampHandler();
             databaseHandler = new DatabaseHandler();
 
-            // get the steamuser handler, which is used for logging on after successfully connecting
             steamUser = steamClient.GetHandler<SteamUser>();
 
             steamFriends = steamClient.GetHandler<SteamFriends>();
@@ -82,43 +79,34 @@ namespace TradeBot.Bot
             offerHandler = new EconServiceHandler(config.api_key);
             marketHandler = new MarketHandler();
 
-
-            // register a few callbacks we're interested in
-            // these are registered upon creation to a callback manager, which will then route the callbacks
-            // to the functions specified
             callbackManager.Subscribe<SteamClient.ConnectedCallback>(OnConnected);
+
             callbackManager.Subscribe<SteamClient.DisconnectedCallback>(OnDisconnected);
 
             callbackManager.Subscribe<SteamUser.LoggedOnCallback>(OnLoggedOn);
 
-
             callbackManager.Subscribe<SteamUser.LoggedOffCallback>(OnLoggedOff);
 
-            // this callback is triggered when the steam servers wish for the client to store the sentry file
             callbackManager.Subscribe<SteamUser.UpdateMachineAuthCallback>(OnMachineAuth);
 
             callbackManager.Subscribe<SteamUser.AccountInfoCallback>(OnAccountInfo);
 
             callbackManager.Subscribe<SteamFriends.FriendMsgCallback>(OnMessageReceived);
 
+            callbackManager.Subscribe<SteamFriends.FriendsListCallback>(OnFriendsList);
 
-
+            callbackManager.Subscribe<SteamFriends.FriendAddedCallback>(OnFriendAdded);
 
             messageHandler.MessageProcessedEvent += OnMessageProcessed;
 
-
-
             Console.WriteLine("Connecting to Steam...");
 
-            // initiate the connection
             steamClient.Connect();
 
             config.working = true;
 
-            // create our callback handling loop
             while (config.working)
             {
-                // in order for the callbacks to get routed, they need to be handled by the manager
                 callbackManager.RunWaitCallbacks(TimeSpan.FromSeconds(1));
             }
         }
@@ -132,7 +120,6 @@ namespace TradeBot.Bot
             byte[] sentryHash = null;
             if (File.Exists("sentry.bin"))
             {
-                // if we have a saved sentry file, read and sha-1 hash it
                 byte[] sentryFile = File.ReadAllBytes("sentry.bin");
                 sentryHash = CryptoHelper.SHAHash(sentryFile);
             }
@@ -141,18 +128,8 @@ namespace TradeBot.Bot
             {
                 Username = config.login,
                 Password = config.password,
-
-
-                // in this sample, we pass in an additional authcode
-                // this value will be null (which is the default) for our first logon attempt
                 AuthCode = authCode,
-
-                // if the account is using 2-factor auth, we'll provide the two factor code instead
-                // this will also be null on our first logon attempt
                 TwoFactorCode = steamGuardCode,
-
-                // our subsequent logons use the hash of the sentry file as proof of ownership of the file
-                // this will also be null for our first (no authcode) and second (authcode only) logon attempts
                 SentryFileHash = sentryHash,
             });
 
@@ -161,9 +138,6 @@ namespace TradeBot.Bot
 
         private void OnDisconnected(SteamClient.DisconnectedCallback callback)
         {
-            // after recieving an AccountLogonDenied, we'll be disconnected from steam
-            // so after we read an authcode from the user, we need to reconnect to begin the logon flow again
-
             Console.WriteLine("Disconnected from Steam, reconnecting in 5...");
 
             CancelTradeOfferPollingThread();
@@ -229,10 +203,6 @@ namespace TradeBot.Bot
             //starts thread that handles tradeoffers
             SpawnTradeOfferPollingThread();
 
-
-
-
-            // at this point, we'd be able to perform actions on Steam
         }
 
         private void OnLoggedOff(SteamUser.LoggedOffCallback callback)
@@ -249,7 +219,6 @@ namespace TradeBot.Bot
             {
                 Console.WriteLine("Updating sentryfile...");
 
-                // write out our sentry file
                 int fileSize;
                 byte[] sentryHash;
                 using (var fs = File.Open("sentry.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
@@ -265,22 +234,16 @@ namespace TradeBot.Bot
                     }
                 }
 
-                // inform the steam servers that we're accepting this sentry file
                 steamUser.SendMachineAuthResponse(new SteamUser.MachineAuthDetails
                 {
                     JobID = callback.JobID,
-
                     FileName = callback.FileName,
-
                     BytesWritten = callback.BytesToWrite,
                     FileSize = fileSize,
                     Offset = callback.Offset,
-
                     Result = EResult.OK,
                     LastError = 0,
-
                     OneTimePassword = callback.OneTimePassword,
-
                     SentryFileHash = sentryHash,
                 });
 
@@ -349,6 +312,22 @@ namespace TradeBot.Bot
             changeStatus();
         }
 
+        private void OnFriendsList(SteamFriends.FriendsListCallback callback)
+        {
+            foreach(var friend in callback.FriendList)
+            {
+                if (friend.Relationship == EFriendRelationship.RequestRecipient)
+                {
+                    steamFriends.AddFriend(friend.SteamID);
+                }
+            }
+        }
+
+        private void OnFriendAdded(SteamFriends.FriendAddedCallback callback)
+        {
+            steamFriends.SendChatMessage(callback.SteamID, EChatEntryType.ChatMsg, "Welcome. Type !help for the list of commands.");
+        }
+
         private void changeStatus()
         {
             switch (config.status)
@@ -381,7 +360,6 @@ namespace TradeBot.Bot
             while (tradeOfferThread == Thread.CurrentThread)
             {
                 Thread.Sleep(10000);
-
                 //set parameters for data you want to receive
                 var recData = new Dictionary<string, string>
                 {
@@ -389,14 +367,10 @@ namespace TradeBot.Bot
                     {"active_only", "1"},
                     {"time_historical_cutoff", "999999999999"}
                 };
-
                 var offers = offerHandler.GetTradeOffers(recData).TradeOffersReceived;
-
                 //Console.WriteLine("Number of items in CS:GO equipment: {0}", steamInventory.AssetCount().ToString());
-
                 if (offers == null)
                     continue;
-
                 Console.WriteLine("Pending offers:");
                 foreach (CEconTradeOffer cEconTradeOffer in offers)
                 {
@@ -489,8 +463,6 @@ namespace TradeBot.Bot
                 double ethPriceForOneUsd = bitstampHandler.getEthPriceForOneUsd();
                 double costPerOneInETH = costPerOneInUSD * ethPriceForOneUsd;
 
-
-                //Console.WriteLine("Cost per one in ETH: {0}", costPerOneInETH);
                 databaseHandler.AddTransaction(transaction);
                 transaction = databaseHandler.GetUserTransaction(user.SteamID);
 
