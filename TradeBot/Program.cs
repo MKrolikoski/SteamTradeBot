@@ -15,6 +15,10 @@ namespace TradeBot
         {
             BotCore bot = new BotCore();
 
+            //BitstampHandler bh = new BitstampHandler();
+            //Console.WriteLine(bh.getAvailableEth());
+            //Console.ReadKey();
+
 
             //DatabaseHandler db = new DatabaseHandler();
             //Transaction tr = db.GetUserTransaction("steamID");

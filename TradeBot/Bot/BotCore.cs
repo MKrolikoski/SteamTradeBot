@@ -38,6 +38,10 @@ namespace TradeBot.Bot
         private string authCode, steamGuardCode;
 
         private Inventory steamInventory;
+
+        private int availableKeys;
+        private double availableEth;
+
         private BotConfig config;
 
         private Thread tradeOfferThread;
@@ -199,6 +203,8 @@ namespace TradeBot.Bot
 
             //730 - appID for CS:GO
             steamInventory = new Inventory(steamID, 730);
+            availableKeys = getKeysAmount();
+            availableEth = bitstampHandler.getAvailableEth();
 
             //starts thread that handles tradeoffers
             SpawnTradeOfferPollingThread();
@@ -279,12 +285,16 @@ namespace TradeBot.Bot
                     //
                     steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Available commands: \n!help, \n!sell [number_of_keys], \n!buy [number_of_keys], \n!setethaddress [eth_address], \n!info, \n!confirm"); break;
                 case MessageType.SELL:
-                    if (createTransaction(message.from, message.parameters, message.messageType))
+                    if (createTransaction(message.from, Convert.ToInt32(message.parameters[0]), message.messageType))
+                    {
                         steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Transaction added succesfully.");
+                    }
                     break;
                 case MessageType.BUY:
-                    if(createTransaction(message.from, message.parameters, message.messageType))
+                    if (createTransaction(message.from, Convert.ToInt32(message.parameters[0]), message.messageType))
+                    {
                         steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Transaction added succesfully.");
+                    }
                     break;
                 case MessageType.SETETHADDRESS:
                     if(databaseHandler.setEthAddress(message.from.ToString(), message.parameters[0]))
@@ -370,15 +380,102 @@ namespace TradeBot.Bot
                     {"time_historical_cutoff", "999999999999"}
                 };
                 var offers = offerHandler.GetTradeOffers(recData).TradeOffersReceived;
-                //Console.WriteLine("Number of items in CS:GO equipment: {0}", steamInventory.AssetCount().ToString());
                 if (offers == null)
-                    continue;                  
-                Console.WriteLine("Pending offers:");
+                    continue;
+
                 foreach (CEconTradeOffer cEconTradeOffer in offers)
                 {
-                    Console.WriteLine("Offer from user: {0}", cEconTradeOffer.AccountIdOther.ToString());
+                    User user = databaseHandler.GetUser(cEconTradeOffer.AccountIdOther.ToString());
+                    if (user != null)
+                    {
+                        string response;
+                        Transaction transaction = databaseHandler.GetUserTransaction(user.SteamID);
+                        if(transaction != null && transaction.Confirmed)
+                        {
+                            Tradeoffer tradeoffer = databaseHandler.GetUserTradeOffer(user.SteamID);
+                            if(!tradeoffer.Accepted)
+                            {
+                                //BUY -> check offer -> if ok -> wait for ETH -> check -> confirm tradeoffer -> remove transaction
+                                if (transaction.Buy)
+                                {
+                                    if (checkTradeOffer(tradeoffer, cEconTradeOffer, MessageType.BUY, out response))
+                                    {
+                                        tradeoffer.Accepted = true;
+                                        //TODO
+                                        databaseHandler.UpdateTradeOffer(tradeoffer);
+                                        continue;
+                                    }
+                                }
+                                else
+                                //SELL -> check offer -> accept tradeoffer -> send ETH -> remove transaction
+                                {
+                                    if (checkTradeOffer(tradeoffer, cEconTradeOffer, MessageType.SELL, out response))
+                                    {
+                                        tradeoffer.Accepted = true;
+                                        databaseHandler.UpdateTradeOffer(tradeoffer);
+                                        //TODO
+                                        //bitstampHandler.sendETH(user.WalletAddress, amount)
+                                        continue;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if(transaction.Buy)
+                                {
+                                    //TODO - check eth transactions
+                                }
+                            }
+                        }    
+                        //TODO
+                        //DECLINE OFFER
+                        //
+                    }
+                    Console.WriteLine("User not in db");
                 }
             }
+        }
+
+        private bool checkTradeOffer(Tradeoffer DBoffer, CEconTradeOffer steamOffer, MessageType transactionType, out string response)
+        {
+            if(transactionType == MessageType.BUY)
+            {
+                //BUY
+                if (steamOffer.ItemsToReceive.Count != 0 || steamOffer.ItemsToGive.Count != DBoffer.Amount)
+                {
+                    response = "Incorrect number of items in trade offer."; 
+                    return false;
+                }
+                foreach (var item in steamOffer.ItemsToGive)
+                {
+                    //TODO - not sure if instanceID is unique for keys -> need more testing or simply check Item.marketHashName for ending with "key" phrase
+                    if (item.InstanceId != 143865972)
+                    {
+                        response = "Send only keys in trade offer.";
+                        return false;
+                    }
+                }
+            }
+            else
+            {
+                //SELL
+                if (steamOffer.ItemsToGive.Count != 0 || steamOffer.ItemsToReceive.Count != DBoffer.Amount)
+                {
+                    response = "Incorrect number of items in trade offer.";
+                    return false;
+                }
+                foreach (var item in steamOffer.ItemsToReceive)
+                {
+                    //TODO - not sure if instanceID is unique for keys -> need more testing or simply check Item.marketHashName for ending with "key" phrase
+                    if (item.InstanceId != 143865972)
+                    {
+                        response = "Send only keys in trade offer.";
+                        return false;
+                    }
+                }
+            }
+            response = "Correct trade offer.";
+            return true;
         }
 
         private void printInfo(SteamID steamID)
@@ -434,7 +531,7 @@ namespace TradeBot.Bot
             steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, response.ToString());
         }
 
-        private bool createTransaction(SteamID steamID, List<string> parameters, MessageType transactionType)
+        private bool createTransaction(SteamID steamID, int keyAmount, MessageType transactionType)
         {
             try
             {
@@ -447,6 +544,7 @@ namespace TradeBot.Bot
                 //delete previous transaction if exists
                 if (databaseHandler.GetUserTransaction(user.SteamID) != null)
                 {
+                    //TODO -> add keys / eth to current amounts
                     databaseHandler.DeleteUserTransaction(user.SteamID);
                 }
 
@@ -454,6 +552,13 @@ namespace TradeBot.Bot
                 double costPerOneInUSD;
                 if (transactionType == MessageType.BUY)
                 {
+                    //TODO
+                    //if (Convert.ToInt32(parameters[0]) > keysInInventory)
+                    //{
+                    //    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Not enough keys in bot's inventory.\nNumber of available keys: " + keysInInventory.ToString());
+                    //    return false;
+                    //}
+                    //
                     transaction.Buy = true;
                     costPerOneInUSD = config.buy_price;
                 }
@@ -463,17 +568,35 @@ namespace TradeBot.Bot
                     costPerOneInUSD = config.sell_price;
                 }
                 double ethPriceForOneUsd = bitstampHandler.getEthPriceForOneUsd();
+                if(ethPriceForOneUsd == -1)
+                {
+                    steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, "Error while adding transaction.");
+                    return false;
+                }
+
                 double costPerOneInETH = costPerOneInUSD * ethPriceForOneUsd;
+                double totalEthValue = costPerOneInETH * keyAmount;
+                if (transactionType == MessageType.SELL && availableEth < totalEthValue)
+                {
+                    steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, "Not enough ETH in bot's wallet.\nNumber of max. number of keys bot can buy: " + Math.Floor(availableEth/costPerOneInETH).ToString());
+                    return false;
+                }
 
                 databaseHandler.AddTransaction(transaction);
                 transaction = databaseHandler.GetUserTransaction(user.SteamID);
-                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, Convert.ToInt32(parameters[0]), costPerOneInETH, false);
+                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, keyAmount, costPerOneInETH, false);
                 databaseHandler.AddTradeOffer(tradeoffer);
             }catch(Exception e)
             {
                 steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, "Error while adding transaction.");
                 return false;
             }
+            //TODO -> usunąc komentarz, gdy beda juz klucze w EQ
+            //if (transactionType == MessageType.BUY)
+            //    availableKeys -= keyAmount;
+            //else
+            //    availableEth -= databaseHandler.getTransactionEthValue(steamID.ToString());
+            //
             return true;
         }
 
@@ -494,6 +617,17 @@ namespace TradeBot.Bot
                     response.AppendLine("Transaction already confirmed.\nTo see next step please use !info command."); break;
             }
             steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, response.ToString());
+        }
+
+        private int getKeysAmount()
+        {
+            int count = 0;
+            foreach (KeyValuePair<long, Item> pair in steamInventory.Items)
+            {
+                if (pair.Value.Items[0].ToCEconAsset(730).InstanceId == 143865972)
+                    count++;
+            }
+            return count;
         }
     }
 }

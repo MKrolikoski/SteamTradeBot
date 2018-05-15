@@ -26,7 +26,7 @@ namespace TradeBot.Bitstamp
                 Console.WriteLine(response.Content);
             }
             else
-                Console.WriteLine("Error respoms");
+                Console.WriteLine("Error response");
         }
 
         public double getEthPriceForOneUsd()
@@ -41,6 +41,22 @@ namespace TradeBot.Bitstamp
                 cultureInfo.NumberFormat.NumberDecimalSeparator = ".";
                 cultureInfo.NumberFormat.NumberGroupSeparator = ".";
                 return 1/Convert.ToDouble(WebUtils.GetJSONAtribute(response.Content, "vwap"), cultureInfo);
+            }
+            return -1;
+        }
+
+        public double getAvailableEth()
+        {
+            var baseUrl = "https://www.bitstamp.net/api/v2/balance/ethusd/";
+            var client = new RestClient(baseUrl);
+            RestRequest request = account.authenticator.authenticate(new RestRequest(Method.POST));
+            var response = client.Execute(request);
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                var cultureInfo = (CultureInfo)CultureInfo.InvariantCulture.Clone();
+                cultureInfo.NumberFormat.NumberDecimalSeparator = ".";
+                cultureInfo.NumberFormat.NumberGroupSeparator = ".";
+                return Convert.ToDouble(WebUtils.GetJSONAtribute(response.Content, "eth_available"), cultureInfo);
             }
             return -1;
         }

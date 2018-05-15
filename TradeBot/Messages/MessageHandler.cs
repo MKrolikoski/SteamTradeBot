@@ -81,7 +81,7 @@ namespace TradeBot.Messages
                 case MessageType.BUY:
                 case MessageType.SELL:
                     int number;
-                    if (parameters.Count == 1 && Int32.TryParse(parameters[0], out number))
+                    if (parameters.Count == 1 && Int32.TryParse(parameters[0], out number) && Convert.ToInt32(parameters[0]) > 0)
                         return true;
                     break;
                 case MessageType.SETETHADDRESS:

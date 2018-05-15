@@ -57,8 +57,8 @@ namespace TradeBot.Bitstamp
             api_secret = Console.ReadLine();
             Console.Write("CustomerID: ");
             customer_id = Console.ReadLine();
-            //Console.Write("ETH address: ");
-            //eth_address = Console.ReadLine();
+            Console.Write("ETH address: ");
+            eth_address = Console.ReadLine();
 
         }
     }
