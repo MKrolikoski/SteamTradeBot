@@ -42,12 +42,11 @@ namespace TradeBot.Messages.Tests
         [TestMethod()]
         public void processBuyMessageTest()
         {
-            string message = "!buy 34 now";
+            string message = "!buy 34";
             SteamID from;
             Utils.TrySetSteamID("198662804", out from);
             List<string> parameters = new List<string>();
             parameters.Add("34");
-            parameters.Add("now");
             Message expectedResponse = new Message(MessageType.BUY, parameters, from);       
             MessageHandler messageHandler = new MessageHandler();
             Message actualResponse = messageHandler.parseMessage(message, from);
@@ -82,10 +81,11 @@ namespace TradeBot.Messages.Tests
         [TestMethod()]
         public void processDifferentCaseMessageTest()
         {
-            string message = "!SeTETHaddreSS";
+            string message = "!SeTETHaddreSS 1234";
             SteamID from;
             Utils.TrySetSteamID("198662804", out from);
             List<string> parameters = new List<string>();
+            parameters.Add("1234");
             Message expectedResponse = new Message(MessageType.SETETHADDRESS, parameters, from);
             MessageHandler messageHandler = new MessageHandler();
             Message actualResponse = messageHandler.parseMessage(message, from);

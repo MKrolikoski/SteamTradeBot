@@ -237,7 +237,7 @@ namespace TradeBot.Database
                 Tradeoffer tradeOfferInDB = GetTradeOffer(tradeoffer.TradeofferID);
                 if (tradeOfferInDB == null)
                 {
-                    connection.Query<Tradeoffer>($"INSERT INTO TradeOffers(TransactionID, Amount,CostPerOne, Accepted) VALUES ('{tradeoffer.TransactionID}','{tradeoffer.Amount}',{tradeoffer.CostPerOne.ToString(CultureInfo.InvariantCulture)}, {tradeoffer.Accepted.ToString()})");
+                    connection.Query<Tradeoffer>($"INSERT INTO TradeOffers(TransactionID, Amount,CostPerOne, Accepted) VALUES ('{tradeoffer.TransactionID}','{tradeoffer.Amount}',{tradeoffer.CostPerOne.ToString(CultureInfo.GetCultureInfo("en-US"))}, {tradeoffer.Accepted.ToString()})");
                     return true;
                 }
                 else
@@ -254,7 +254,7 @@ namespace TradeBot.Database
                 Tradeoffer tradeOfferInDB = GetTradeOffer(tradeoffer.TradeofferID);
                 if (tradeOfferInDB != null)
                 {
-                    connection.Query<Tradeoffer>($"UPDATE TradeOffers SET Amount='{tradeoffer.Amount}',CostPerOne={tradeoffer.CostPerOne.ToString(CultureInfo.InvariantCulture)}, Accepted={tradeoffer.Accepted.ToString()} WHERE TradeOfferID='{tradeoffer.TradeofferID}'");
+                    connection.Query<Tradeoffer>($"UPDATE TradeOffers SET Amount='{tradeoffer.Amount}',CostPerOne={tradeoffer.CostPerOne.ToString(CultureInfo.GetCultureInfo("en-US"))}, Accepted={tradeoffer.Accepted.ToString()} WHERE TradeOfferID='{tradeoffer.TradeofferID}'");
                     return true;
                 }
                 else

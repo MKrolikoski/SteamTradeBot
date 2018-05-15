@@ -277,7 +277,7 @@ namespace TradeBot.Bot
                         databaseHandler.AddUser(user);
                     }
                     //
-                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Available commands: \n!help, \n!sell, \n!buy, \n!setethaddress, \n!info, \n!confirm"); break;
+                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Available commands: \n!help, \n!sell [number_of_keys], \n!buy [number_of_keys], \n!setethaddress [eth_address], \n!info, \n!confirm"); break;
                 case MessageType.SELL:
                     if (createTransaction(message.from, message.parameters, message.messageType))
                         steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Transaction added succesfully.");
@@ -302,8 +302,10 @@ namespace TradeBot.Bot
                     break;
                 case MessageType.INFO:
                     printInfo(message.from); break;
+                case MessageType.BADPARAMS:
+                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Bad arguments. Type !help for the list of commands and their arguments."); break;
                 default:
-                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Unknown command. Type !help for the list of commands."); break;
+                    steamFriends.SendChatMessage(message.from, EChatEntryType.ChatMsg, "Unknown command. Type !help for the list of commands and their arguments."); break;
             }
         }
 
@@ -370,7 +372,7 @@ namespace TradeBot.Bot
                 var offers = offerHandler.GetTradeOffers(recData).TradeOffersReceived;
                 //Console.WriteLine("Number of items in CS:GO equipment: {0}", steamInventory.AssetCount().ToString());
                 if (offers == null)
-                    continue;
+                    continue;                  
                 Console.WriteLine("Pending offers:");
                 foreach (CEconTradeOffer cEconTradeOffer in offers)
                 {
@@ -465,7 +467,6 @@ namespace TradeBot.Bot
 
                 databaseHandler.AddTransaction(transaction);
                 transaction = databaseHandler.GetUserTransaction(user.SteamID);
-
                 Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, Convert.ToInt32(parameters[0]), costPerOneInETH, false);
                 databaseHandler.AddTradeOffer(tradeoffer);
             }catch(Exception e)

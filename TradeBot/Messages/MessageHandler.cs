@@ -43,16 +43,20 @@ namespace TradeBot.Messages
                 {
                     command = message.ToLower();
                 }
+                MessageType messageType;
                 switch (command)
                 {
-                    case "!help": return new Message(MessageType.HELP, parameters, from);
-                    case "!sell": return new Message(MessageType.SELL, parameters, from);
-                    case "!buy": return new Message(MessageType.BUY, parameters, from);
-                    case "!setethaddress": return new Message(MessageType.SETETHADDRESS, parameters, from);
-                    case "!confirm": return new Message(MessageType.CONFIRM, parameters, from);
-                    case "!info": return new Message(MessageType.INFO, parameters, from);
-                    default: parameters = new List<string>();  return new Message(MessageType.UNKNOWN, parameters, from);
+                    case "!help": messageType = MessageType.HELP; break;
+                    case "!sell": messageType = MessageType.SELL; break;
+                    case "!buy": messageType = MessageType.BUY; break;
+                    case "!setethaddress": messageType = MessageType.SETETHADDRESS; break;
+                    case "!confirm": messageType = MessageType.CONFIRM; break;
+                    case "!info": messageType = MessageType.INFO; break;
+                    default: parameters = new List<string>();  messageType = MessageType.UNKNOWN; break;
                 }
+                if (!checkParams(messageType, parameters))
+                    messageType = MessageType.BADPARAMS; 
+                return new Message(messageType, parameters, from);
             }catch(Exception e)
             {
                 return new Message(MessageType.UNKNOWN, null, from);
@@ -68,6 +72,25 @@ namespace TradeBot.Messages
                 parameters.Add(s);
             }
             return parameters;
+        }
+
+        private bool checkParams(MessageType messageType, List<string> parameters)
+        {
+            switch(messageType)
+            {
+                case MessageType.BUY:
+                case MessageType.SELL:
+                    int number;
+                    if (parameters.Count == 1 && Int32.TryParse(parameters[0], out number))
+                        return true;
+                    break;
+                case MessageType.SETETHADDRESS:
+                    if (parameters.Count == 1)
+                        return true;
+                    break;
+                default: return true;
+            }
+            return false;
         }
     }
 }

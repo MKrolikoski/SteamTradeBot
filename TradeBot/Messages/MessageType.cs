@@ -14,6 +14,7 @@ namespace TradeBot.Messages
         SETETHADDRESS,
         CONFIRM,
         INFO,
+        BADPARAMS,
         UNKNOWN
     }
 }
