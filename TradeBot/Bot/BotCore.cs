@@ -14,6 +14,9 @@ using TradeBot.Entity;
 using System.Text;
 using System.Globalization;
 
+/// <summary>
+/// Implementation of main bot functionallity 
+/// </summary>
 namespace TradeBot.Bot
 {
     class BotCore

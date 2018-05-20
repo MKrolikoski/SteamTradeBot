@@ -7,16 +7,31 @@ using TradeBot.Entity;
 
 namespace TradeBot.Database
 {
+    /// <summary>
+    /// Class that helps user in handling databse operations.
+    /// </summary>
     public class DatabaseHandler : DataAccess
     {
+        /// <summary>
+        /// Default constructor
+        /// </summary>
         public DatabaseHandler() : base() { }
 
-
+        /// <summary>
+        /// Method check if user transaction is confirmed.
+        /// </summary>
+        /// <param name="steamID">user steam id</param>
+        /// <returns>true if transaction is confirmed, false in other case</returns>
         public bool TransactionConfirmed(string steamID)
         {
             return GetUserTransaction(steamID).Confirmed;
         }
 
+        /// <summary>
+        /// Method set confirmed status in databse record.
+        /// </summary>
+        /// <param name="steamID">user steam id</param>
+        /// <returns>true if record update ended with success, false in other case</returns>
         public bool ConfirmTransaction(string steamID)
         {
             Transaction transaction = GetUserTransaction(steamID);
@@ -28,11 +43,21 @@ namespace TradeBot.Database
             return false;
         }
 
+        /// <summary>
+        /// Method check if user transaction is accepted.
+        /// </summary>
+        /// <param name="steamID">user steam id</param>
+        /// <returns>true if transaction is accepted, false in other case</returns>
         public bool TradeOfferAccepted(string steamID)
         {
             return GetUserTradeOffer(steamID).Accepted;
         }
 
+        /// <summary>
+        /// Method set accept status in databse record.
+        /// </summary>
+        /// <param name="steamID">user steam id</param>
+        /// <returns>true if record update ended with success, false in other case</returns>
         public bool AcceptTradeOffer(string steamID)
         {
             Tradeoffer tradeoffer = GetUserTradeOffer(steamID);
@@ -44,12 +69,22 @@ namespace TradeBot.Database
             return false;
         }
 
-
+        /// <summary>
+        /// Method delete user transaction in databse.
+        /// </summary>
+        /// <param name="steamID">user steam id</param>
+        /// <returns>true if record delete ended with success, false in other case</returns>
         public bool DeleteUserTransaction(string steamID)
         {
             return DeleteTransaction(GetUserTransaction(steamID));
         }
 
+        /// <summary>
+        /// Method set ehtereum wallet address.
+        /// </summary>
+        /// <param name="steamID">user steam id</param>
+        /// <param name="address">ethereum wallet address</param>
+        /// <returns>true if record update ended with success, false in other case</returns>
         public bool setEthAddress(string steamID, string address)
         {
             User user = GetUser(steamID);
@@ -57,6 +92,11 @@ namespace TradeBot.Database
             return UpdateUser(user);
         }
 
+        /// <summary>
+        /// Method checks current transaction stage.
+        /// </summary>
+        /// <param name="steamID">user steam id</param>
+        /// <returns>TransactionStage class</returns>
         public TransactionStage getTransactionStage(string steamID)
         {
             Transaction transaction = GetUserTransaction(steamID);
@@ -72,6 +112,11 @@ namespace TradeBot.Database
             return TransactionStage.SENDING_ETH;
         }
 
+        /// <summary>
+        /// Method checks value of transaction in ETH
+        /// </summary>
+        /// <param name="steamID">user steam id</param>
+        /// <returns>value of transaction in ETH</returns>
         public double getTransactionEthValue(string steamID)
         {
             Tradeoffer tradeoffer = GetUserTradeOffer(steamID);

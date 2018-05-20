@@ -7,8 +7,17 @@ using SteamKit2;
 
 namespace TradeBot.Bot
 {
+    /// <summary>
+    /// Bot necessary utilities.
+    /// </summary>
     public class Utils
     {
+        /// <summary>
+        /// Method checks if it is possible to set SteamID to SteamID class.
+        /// </summary>
+        /// <param name="input">steamID to check</param>
+        /// <param name="steamID"> SteamID class</param>
+        /// <returns>return true if steamID is correct or false in other case</returns>
         public static bool TrySetSteamID(string input, out SteamID steamID)
         {
             steamID = new SteamID();

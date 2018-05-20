@@ -9,8 +9,15 @@ using System.Globalization;
 
 namespace TradeBot.Database
 {
+    /// <summary>
+    /// Class that is used to connect and make changes to the databse.
+    /// </summary>
     public class DataAccess
     {
+        /// <summary>
+        /// Method connect to databse and returns list of all users.
+        /// </summary>
+        /// <returns> List of all Users</returns>
         public List<User> GetAllUsers()
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -19,6 +26,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and retur user with steam id same as method parameter.
+        /// <param name="steamID">string with user steam id</param> 
+        /// </summary>
+        /// <returns>User class if user exist or null if not</returns>
         public User GetUser(string steamID)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -33,6 +45,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and add new user passed as argument.
+        /// </summary>
+        /// <param name="user">user class to add</param> 
+        /// <returns>true if operation ended with success, false in other case</returns>
         public bool AddUser(User user)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB"))) {
@@ -46,6 +63,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and update user passed as argument.
+        /// </summary>
+        /// <param name="user">user class to update</param> 
+        /// <returns>>true if operation ended with success, false in other case</returns>
         public bool UpdateUser(User user)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -63,7 +85,11 @@ namespace TradeBot.Database
             }
         }
 
-
+        /// <summary>
+        /// Method connect to databse and delete user passed as argument.
+        /// </summary>
+        /// <param name="user">user class</param> 
+        /// <returns>>true if operation ended with success, false in other case</returns>
         public bool DeleteUser(User user)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -79,6 +105,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and get transaction with id same as in parameter.
+        /// <param name="TransacionID">string with transaction id</param>
+        /// </summary>
+        /// <returns>Transaction class if it exist in databese, null in other case</returns>
         public Transaction GetTransaction(int TransacionID)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -114,10 +145,15 @@ namespace TradeBot.Database
         //        {
         //            return null;
         //        }
-                
+
         //    }
         //}
 
+        /// <summary>
+        /// Method connect to databse and returns trasanction that is connected to user with steamID same as in parameter.
+        /// <param name="steamID">string with user steamID</param>
+        /// </summary>
+        /// <returns>Transaction class if it exist in database, null in other case</returns>
         public Transaction GetUserTransaction(string steamID)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -142,6 +178,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and add new trasanction passed as argument.
+        /// </summary>
+        /// <param name="transaction">transaction class to add</param>
+        /// <returns>>true if operation ended with success, false in other case</returns>
         public bool AddTransaction(Transaction transaction)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -160,6 +201,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and update transaction passed as argument.
+        /// </summary>
+        /// <param name="transaction">transaction class to update</param>
+        /// <returns>>true if operation ended with success, false in other case</returns>
         public bool UpdateTransaction(Transaction transaction)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -177,6 +223,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and delete transaction passed as argument.
+        /// </summary>
+        /// <param name="transaction">transaction class to delete</param>
+        /// <returns>>true if operation ended with success, false in other case</returns>
         public bool DeleteTransaction(Transaction transaction)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -191,6 +242,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and returns trade offer with id same as in parameter.
+        /// </summary>
+        /// <param name="tradeOfferID">trade offer id</param>
+        /// <returns>Tradeoffer class if it exist in databse, null in other case</returns>
         public Tradeoffer GetTradeOffer(int tradeOfferID)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -205,7 +261,11 @@ namespace TradeBot.Database
             }
         }
 
-
+        /// <summary>
+        /// Method connect to databse and returns user transactions who has steam id same as in parameter.
+        /// </summary>
+        /// <param name="steamID">string with user steam id</param>  
+        /// <returns>Tradeoffer class if it exist in databse, null in other case</returns>
         public Tradeoffer GetUserTradeOffer(string steamID)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -230,6 +290,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and add new trade offer passed as argument.
+        /// </summary>
+        /// <param name="tradeoffer">Tradeoofer class to add</param>  
+        /// <returns>>true if operation ended with success, false in other case</returns>
         public bool AddTradeOffer(Tradeoffer tradeoffer)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -247,6 +312,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and update trade offer passed as argument.
+        /// </summary>
+        /// <param name="tradeoffer">Tradeoofer class to update</param>  
+        /// <returns>>true if operation ended with success, false in other case</returns>
         public bool UpdateTradeOffer(Tradeoffer tradeoffer)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -264,6 +334,11 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// Method connect to databse and delete trade offer passed as argument.
+        /// </summary>
+        /// <param name="tradeoffer">Tradeoofer class to delete</param>  
+        /// <returns>>true if operation ended with success, false in other case</returns>
         public bool DeleteTradeOffer(Tradeoffer tradeoffer)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
