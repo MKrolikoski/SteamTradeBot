@@ -78,6 +78,7 @@
     </Reference>
     <Reference Include="System.Transactions" />
     <Reference Include="System.Web" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -101,6 +102,18 @@
     <Compile Include="Entity\Tradeoffer.cs" />
     <Compile Include="Entity\Transaction.cs" />
     <Compile Include="Entity\User.cs" />
+    <Compile Include="GUIForms\MainWindowForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUIForms\MainWindowForm.Designer.cs">
+      <DependentUpon>MainWindowForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUIForms\SteamConfigForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUIForms\SteamConfigForm.Designer.cs">
+      <DependentUpon>SteamConfigForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Messages\Message.cs" />
     <Compile Include="Messages\MessageHandler.cs" />
     <Compile Include="Messages\MessageType.cs" />
@@ -115,6 +128,7 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="packages.config" />
+    <None Include="Properties\DataSources\TradeBot.Bot.BotConfig.datasource" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="docs\MySqlCommand.xml" />
@@ -131,6 +145,14 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="lib\" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="GUIForms\MainWindowForm.resx">
+      <DependentUpon>MainWindowForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUIForms\SteamConfigForm.resx">
+      <DependentUpon>SteamConfigForm.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

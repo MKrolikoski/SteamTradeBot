@@ -632,6 +632,11 @@ namespace TradeBot.Bot
             }
             return count;
         }
+
+        public void turnOff()
+        {
+            config.working = false;
+        }
     }
 }
 

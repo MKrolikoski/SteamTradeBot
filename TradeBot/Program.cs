@@ -1,19 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Windows.Forms;
 using TradeBot.Bitstamp;
 using TradeBot.Bot;
 using TradeBot.Database;
 using TradeBot.Entity;
+using TradeBot.GUIForms;
 using TradeBot.Web;
 
 namespace TradeBot
 {
     class Program
     {
+        [STAThread]
         static void Main(string[] args)
         {
             BotCore bot = new BotCore();
+
+            //Form form = new MainWindowForm();
+            //form.ShowDialog();
 
             //BitstampHandler bh = new BitstampHandler();
             //Console.WriteLine(bh.getAvailableEth());
