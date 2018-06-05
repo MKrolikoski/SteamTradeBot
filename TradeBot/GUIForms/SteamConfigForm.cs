@@ -86,7 +86,9 @@ namespace TradeBot.GUIForms
             }
             try
             {
+                //for test disabled
                 config.exportTo("E:\\tmp.txt");
+                //config.save();
                 System.Windows.Forms.MessageBox.Show("Configuartion saved!");
             } catch (IOException exception)
             {
@@ -99,7 +101,8 @@ namespace TradeBot.GUIForms
             DialogResult dialogResult = MessageBox.Show("Are you sure you want to clear configuration file?", "Are you sure?", MessageBoxButtons.YesNo);
             if (dialogResult == DialogResult.Yes)
             {
-                config.createNew();
+                //For tests disabled
+                //config.createNew();
             }
             else if (dialogResult == DialogResult.No)
             {
@@ -124,6 +127,11 @@ namespace TradeBot.GUIForms
                     System.Windows.Forms.MessageBox.Show("Error! Configuration can not be saved!");
                 }
             }
+        }
+
+        private void SteamConfigForm_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }

@@ -16,9 +16,11 @@ namespace TradeBot
         [STAThread]
         static void Main(string[] args)
         {
-            BotCore bot = new BotCore();
+           // BotCore bot = new BotCore();
 
-            //Form form = new MainWindowForm();
+            var form = new MainWindowForm();
+            ((log4net.Repository.Hierarchy.Hierarchy)log4net.LogManager.GetLoggerRepository()).Root.AddAppender(form);
+            Application.Run(form);
             //form.ShowDialog();
 
             //BitstampHandler bh = new BitstampHandler();

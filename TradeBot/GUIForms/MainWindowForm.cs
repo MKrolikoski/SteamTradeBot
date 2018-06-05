@@ -1,4 +1,8 @@
-﻿using System;
+﻿using log4net;
+using log4net.Appender;
+using log4net.Core;
+using log4net.Layout;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -11,28 +15,34 @@ using System.Windows.Forms;
 
 namespace TradeBot.GUIForms
 {
-    public partial class MainWindowForm : Form
+    public partial class MainWindowForm : Form, IAppender
     {
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         Bot.BotCore bot = null;
+        Thread thread = null;
         public MainWindowForm()
         {
             InitializeComponent();
+            bot = new Bot.BotCore();
         }
 
         private void startButton_Click(object sender, EventArgs e)
         {
+           
             if (startButton.Text.Equals("Stop")){
                 startButton.Text = "Start";
-                bot.turnOff();
-                bot = null;
+                bot.stop();
             }
             else
             {
-                new Thread(() =>
+                bot.start();
+                thread = new Thread(new ThreadStart(bot.run));
+                thread.Start();
+                /*new Thread(() =>
                 {
                     Thread.CurrentThread.IsBackground = true;
-                    bot = new Bot.BotCore();
-                }).Start();
+                    bot.start();
+                }).Start();*/
                 
                 startButton.Text="Stop";
             }
@@ -43,6 +53,22 @@ namespace TradeBot.GUIForms
         {
             Form form = new SteamConfigForm();
             form.ShowDialog();
+        }
+
+        private void bitStampConfigButton_Click(object sender, EventArgs e)
+        {
+            Form form = new BitStampConfigForm();
+            form.ShowDialog();
+        }
+
+        public void DoAppend(LoggingEvent loggingEvent)
+        {
+            logsTextBox.AppendText(loggingEvent.TimeStamp + " " + loggingEvent.MessageObject.ToString() + Environment.NewLine);
+        }
+
+        private void sendTextButton_Click(object sender, EventArgs e)
+        {
+            //log.Info("TEST");
         }
     }
 }

@@ -13,6 +13,7 @@ using TradeBot.Database;
 using TradeBot.Entity;
 using System.Text;
 using System.Globalization;
+using log4net;
 
 /// <summary>
 /// Implementation of main bot functionallity 
@@ -21,6 +22,7 @@ namespace TradeBot.Bot
 {
     class BotCore
     {
+        private static ILog log = LogManager.GetLogger(typeof(BotCore));
         private CallbackManager callbackManager;
 
         private EconServiceHandler offerHandler;
@@ -54,6 +56,7 @@ namespace TradeBot.Bot
             config = new BotConfig();
             if (!File.Exists("config.cfg"))
             {
+                log.Info("New Bot config created.");
                 config.createNew();
                 if(File.Exists("sentry.bin"))
                     File.Delete("sentry.bin");
@@ -62,11 +65,16 @@ namespace TradeBot.Bot
 
             if (config.login.Equals("") || config.password.Equals(""))
             {
-                Console.Write("Username: ");
-                config.login = Console.ReadLine();
+                //Console.Write("Username: ");
+                //config.login = Console.ReadLine();
 
-                Console.Write("Password: ");
-                config.password = Console.ReadLine();
+                //Console.Write("Password: ");
+                //config.password = Console.ReadLine();
+                log.Info("Set username and password for Steam account");
+                config.working = false;
+            } else
+            {
+                config.working = true;
             }
 
             steamClient = new SteamClient();
@@ -106,23 +114,18 @@ namespace TradeBot.Bot
 
             messageHandler.MessageProcessedEvent += OnMessageProcessed;
 
-            Console.WriteLine("Connecting to Steam...");
+            log.Info("Connecting to Steam...");
 
             steamClient.Connect();
 
-            config.working = true;
-
-            while (config.working)
-            {
-                callbackManager.RunWaitCallbacks(TimeSpan.FromSeconds(1));
-            }
+            
         }
 
 
 
         private void OnConnected(SteamClient.ConnectedCallback callback)
         {
-            Console.WriteLine("Connected to Steam! Logging in...");
+            log.Info("Connected to Steam! Logging in...");
 
             byte[] sentryHash = null;
             if (File.Exists("sentry.bin"))
@@ -145,7 +148,7 @@ namespace TradeBot.Bot
 
         private void OnDisconnected(SteamClient.DisconnectedCallback callback)
         {
-            Console.WriteLine("Disconnected from Steam, reconnecting in 5...");
+            log.Info("Disconnected from Steam, reconnecting in 5...");
 
             CancelTradeOfferPollingThread();
 
@@ -162,7 +165,7 @@ namespace TradeBot.Bot
             //SteamGuard enabled -> need to generate code
             if (isSteamGuard || is2FA)
             {
-                Console.WriteLine("This account is SteamGuard protected!");
+                log.Info("This account is SteamGuard protected!");
 
                 if (is2FA)
                 {
@@ -173,7 +176,7 @@ namespace TradeBot.Bot
                     }
                     else
                     {
-                        Console.WriteLine("Generating SteamGuard code..");
+                        log.Info("Generating SteamGuard code..");
                         steamGuardAccount.SharedSecret = config.shared_secret;
                         steamGuardCode = steamGuardAccount.GenerateSteamGuardCode();
                     }
@@ -189,16 +192,16 @@ namespace TradeBot.Bot
 
             if (callback.Result != EResult.OK)
             {
-                Console.WriteLine("Unable to logon to Steam: {0} / {1}", callback.Result, callback.ExtendedResult);
+                log.Info("Unable to logon to Steam: "+ callback.Result+ "/"+ callback.ExtendedResult);
 
                 config.working = false;
 
-                Console.WriteLine("Press any key to exit..");
-                Console.ReadKey();
+                //Console.WriteLine("Press any key to exit..");
+                //Console.ReadKey();
                 return;
             }
 
-            Console.WriteLine("Successfully logged on!");
+            log.Info("Successfully logged on!");
 
             config.save();
 
@@ -216,7 +219,7 @@ namespace TradeBot.Bot
 
         private void OnLoggedOff(SteamUser.LoggedOffCallback callback)
         {
-            Console.WriteLine("Logged off of Steam: {0}", callback.Result);
+            log.Info(string.Format("Logged off of Steam: {0}", callback.Result));
             CancelTradeOfferPollingThread();
             config.working = false;
             config.save();
@@ -226,7 +229,7 @@ namespace TradeBot.Bot
         {
             if (authCode != null)
             {
-                Console.WriteLine("Updating sentryfile...");
+                log.Info("Updating sentryfile...");
 
                 int fileSize;
                 byte[] sentryHash;
@@ -256,7 +259,7 @@ namespace TradeBot.Bot
                     SentryFileHash = sentryHash,
                 });
 
-                Console.WriteLine("Done!");
+                log.Info("Done!");
             }
         }
 
@@ -434,7 +437,7 @@ namespace TradeBot.Bot
                         //DECLINE OFFER
                         //
                     }
-                    Console.WriteLine("User not in db");
+                    log.Info("User not in db");
                 }
             }
         }
@@ -633,9 +636,22 @@ namespace TradeBot.Bot
             return count;
         }
 
-        public void turnOff()
+        public void stop()
         {
             config.working = false;
+        }
+
+        public void start()
+        {
+            config.working = true;
+        }
+
+        public void run()
+        {
+            while (config.working)
+            {
+                callbackManager.RunWaitCallbacks(TimeSpan.FromSeconds(1));
+            }
         }
     }
 }
