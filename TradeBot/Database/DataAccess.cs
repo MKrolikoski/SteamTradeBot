@@ -94,6 +94,16 @@ namespace TradeBot.Database
             }
         }
 
+        public List<Transaction> GetAllTransactions()
+        {
+            using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
+            {
+                return connection.Query<Transaction>($"SELECT * FROM Transactions").ToList();
+            }
+        }
+
+
+
         //User is allowed only one transaction at a time, adding new overrides previous one
         //public List<Transaction> GetUserTransactions(string steamID)
         //{
@@ -114,7 +124,7 @@ namespace TradeBot.Database
         //        {
         //            return null;
         //        }
-                
+
         //    }
         //}
 
@@ -149,7 +159,7 @@ namespace TradeBot.Database
                 Transaction transactionInDB = GetTransaction(transaction.TransactionID);
                 if (transactionInDB == null)
                 {
-                    connection.Query<Transaction>($"INSERT INTO Transactions(UserID, CreationDate, Sell,Buy,Confirmed) VALUES ('{transaction.UserID}','{transaction.CreationDate.ToString("yyyy-MM-dd")}',{transaction.Sell.ToString()},{transaction.Buy.ToString()},{transaction.Confirmed.ToString()})");
+                    connection.Query<Transaction>($"INSERT INTO Transactions(UserID, CreationDate, Sell,Buy,Confirmed) VALUES ('{transaction.UserID}','{transaction.CreationDate.ToString("yyyy-MM-dd HH:mm")}',{transaction.Sell.ToString()},{transaction.Buy.ToString()},{transaction.Confirmed.ToString()})");
                     return true;
                 }
                 else
@@ -191,6 +201,14 @@ namespace TradeBot.Database
             }
         }
 
+        public List<Tradeoffer> GetAllTradeOffers()
+        {
+            using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
+            {
+                return connection.Query<Tradeoffer>($"SELECT * FROM TradeOffers").ToList();
+            }
+        }
+
         public Tradeoffer GetTradeOffer(int tradeOfferID)
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -199,6 +217,21 @@ namespace TradeBot.Database
                     return connection.Query<Tradeoffer>($"SELECT * FROM TradeOffers WHERE TradeOffers.TradeOfferID='{tradeOfferID}'").Single();
                 }
                     catch (InvalidOperationException)
+                {
+                    return null;
+                }
+            }
+        }
+
+        public Tradeoffer GetTradeOffer(Transaction transaction)
+        {
+            using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
+            {
+                try
+                {
+                    return connection.Query<Tradeoffer>($"SELECT * FROM TradeOffers WHERE TradeOffers.TransactionID='{transaction.TransactionID}'").Single();
+                }
+                catch (InvalidOperationException)
                 {
                     return null;
                 }

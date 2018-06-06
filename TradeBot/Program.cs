@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SteamKit2;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using TradeBot.Bitstamp;
@@ -13,7 +14,8 @@ namespace TradeBot
     {
         static void Main(string[] args)
         {
-            BotCore bot = new BotCore();
+            BotCore bot = new BotCore(UserHandlerCreator);
+
 
             //BitstampHandler bh = new BitstampHandler();
             //Console.WriteLine(bh.getAvailableEth());
@@ -39,6 +41,16 @@ namespace TradeBot
             db.AddUser(user2);
             db.AddTransaction(transaction);
             */
+        }
+        public static UserHandler UserHandlerCreator(BotCore bot, SteamID sid)
+        {
+            Type controlClass = typeof(TradeOfferUserHandler);
+
+            if (controlClass == null)
+                throw new ArgumentException("Configured control class type was null.", "bot");
+
+            return (UserHandler)Activator.CreateInstance(
+                    controlClass, new object[] { bot, sid });
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,6 +23,7 @@ namespace TradeBot.Web
                 return "";
             }
         }
+
 
         public static Dictionary<string, string> GetJSONAtribute(string JSONString, string[] attributes)
         {
@@ -47,6 +49,12 @@ namespace TradeBot.Web
             {
                 return new Dictionary<string, string>();
             }
+        }
+
+        public static List<T> Deserialize<T>(this string SerializedJSONString)
+        {
+            var convertedObject = JsonConvert.DeserializeObject<List<T>>(SerializedJSONString);
+            return convertedObject;
         }
     }
 }

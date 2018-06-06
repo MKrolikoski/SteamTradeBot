@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TradeBot.Entity;
 
 namespace TradeBot.Database
 {
     public class DatabaseHandler : DataAccess
     {
+        public event EventHandler<string> TransactionDeletedEvent;
+
         public DatabaseHandler() : base() { }
 
 
@@ -78,8 +77,80 @@ namespace TradeBot.Database
             return tradeoffer.Amount * tradeoffer.CostPerOne;
         }
 
+        public double getTransactionEthValue(Tradeoffer tradeoffer)
+        {        
+            return tradeoffer.Amount * tradeoffer.CostPerOne;
+        }
 
+        public double getTransactionEthValue(Transaction transaction)
+        {
+            Tradeoffer tradeoffer = GetTradeOffer(transaction);
+            return tradeoffer.Amount * tradeoffer.CostPerOne;
+        }
 
+        public void DeleteExpiredTransactions()
+        {
+            List<Transaction> transactions = GetAllTransactions();
+            if (transactions.Count == 0)
+                return;
+            foreach(var transaction in transactions)
+            {
+                if ((DateTime.Now - transaction.CreationDate).Days > 0)
+                {
+                    DeleteTransaction(transaction);
+                }
+            }
+        }
 
+        public new bool DeleteTransaction(Transaction transaction)
+        {
+            string eventArg;
+            if (transaction.Sell)
+            {
+                var ethAmount = getTransactionEthValue(transaction);
+                eventArg = "{\"ethAmount\":\"" + ethAmount + "\"}";
+            }
+            else
+            {
+                var keysAmount = GetTradeOffer(transaction).Amount;
+                eventArg = "{\"keysAmount\":\"" + keysAmount + "\"}";
+            }
+            if (base.DeleteTransaction(transaction))
+            {
+                TransactionDeletedEvent(this, eventArg);
+                return true;
+            }
+            return false;
+        }
+
+        public int getReservedKeysAmount()
+        {
+            List<Transaction> transactions = GetAllTransactions();
+            int count = 0;
+            foreach(var transaction in transactions)
+            {
+                if(transaction.Buy)
+                {
+                    Tradeoffer tradeoffer = GetTradeOffer(transaction);
+                    count += tradeoffer.Amount;
+                }
+            }
+            return count;
+        }
+
+        public double getReservedEthAmount()
+        {
+            List<Transaction> transactions = GetAllTransactions();
+            double count = 0;
+            foreach (var transaction in transactions)
+            {
+                if (transaction.Sell)
+                {
+                    Tradeoffer tradeoffer = GetTradeOffer(transaction);
+                    count += tradeoffer.Amount * tradeoffer.CostPerOne;
+                }
+            }
+            return count;
+        }
     }
 }

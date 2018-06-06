@@ -11,8 +11,6 @@ namespace TradeBot.Messages
     {
         public event EventHandler<Message> MessageProcessedEvent;
 
-
-
         public void processMessage(string message, SteamID from)
         {
             Message m = parseMessage(message, from);

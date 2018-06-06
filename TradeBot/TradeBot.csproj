@@ -44,8 +44,8 @@
     <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="protobuf-net, Version=2.1.0.0, Culture=neutral, PublicKeyToken=257b51d87d2e4d67, processorArchitecture=MSIL">
-      <HintPath>..\packages\protobuf-net.2.1.0\lib\net451\protobuf-net.dll</HintPath>
+    <Reference Include="protobuf-net, Version=2.0.0.668, Culture=neutral, PublicKeyToken=257b51d87d2e4d67, processorArchitecture=MSIL">
+      <HintPath>..\packages\protobuf-net.2.0.0.668\lib\net40\protobuf-net.dll</HintPath>
     </Reference>
     <Reference Include="RestSharp, Version=106.2.2.0, Culture=neutral, PublicKeyToken=598062e77f915f75, processorArchitecture=MSIL">
       <HintPath>..\packages\RestSharp.106.2.2\lib\net452\RestSharp.dll</HintPath>
@@ -53,8 +53,11 @@
     <Reference Include="SteamAuth, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\SteamAuth.3.0.0\lib\net45\SteamAuth.dll</HintPath>
     </Reference>
-    <Reference Include="SteamKit2, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\SteamKit2.2.0.0\lib\netstandard2.0\SteamKit2.dll</HintPath>
+    <Reference Include="SteamKit2, Version=1.8.1.0, Culture=neutral, PublicKeyToken=ed3ce47ed5aad940, processorArchitecture=MSIL">
+      <HintPath>..\packages\SteamKit2.1.8.1\lib\net45\SteamKit2.dll</HintPath>
+    </Reference>
+    <Reference Include="SteamTrade">
+      <HintPath>lib\SteamTrade.dll</HintPath>
     </Reference>
     <Reference Include="SteamToolkit">
       <HintPath>lib\SteamToolkit.dll</HintPath>
@@ -89,9 +92,12 @@
     <Compile Include="Bitstamp\BitstampConfig.cs" />
     <Compile Include="Bitstamp\BitstampHandler.cs" />
     <Compile Include="Bitstamp\RequestAuthenticator.cs" />
+    <Compile Include="Bitstamp\TransactionInfo.cs" />
     <Compile Include="Bot\BotCore.cs" />
     <Compile Include="Bot\BotConfig.cs" />
     <Compile Include="Bot\BotStatus.cs" />
+    <Compile Include="Bot\TradeOfferUserHandler.cs" />
+    <Compile Include="Bot\UserHandler.cs" />
     <Compile Include="Bot\Utils.cs" />
     <Compile Include="Database\DataAccess.cs" />
     <Compile Include="Database\DatabaseHandler.cs" />
