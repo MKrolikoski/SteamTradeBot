@@ -7,16 +7,33 @@ using System.Threading.Tasks;
 
 namespace TradeBot.Messages
 {
+    /// <summary>
+    /// Class that helps user in handling message operations.
+    /// </summary>
     public class MessageHandler
     {
+        /// <summary>
+        /// Event message handler.
+        /// </summary>
         public event EventHandler<Message> MessageProcessedEvent;
 
+        /// <summary>
+        /// Method proccess new message.
+        /// </summary>
+        /// <param name="message">user message</param>
+        /// <param name="from">steam id of user who sended message</param>
         public void processMessage(string message, SteamID from)
         {
             Message m = parseMessage(message, from);
             MessageProcessedEvent(this, m);   
         }
 
+        /// <summary>
+        /// Method parse input string and check if it is correct.
+        /// </summary>
+        /// <param name="message">string with message that user sended</param>
+        /// <param name="from">steam id of user who sended message</param>
+        /// <returns>Message class. If input string can not be parsed method returns message with MessageType.UNKNOWN</returns>
         public Message parseMessage(string message, SteamID from)
         {
             try
@@ -61,6 +78,11 @@ namespace TradeBot.Messages
             }
         }
 
+        /// <summary>
+        /// Method returns message parameters.
+        /// </summary>
+        /// <param name="message">message class</param>
+        /// <returns>List of all method parameters</returns>
         public List<string> getParams(string message)
         {
             List<string> parameters = new List<string>();
@@ -72,6 +94,12 @@ namespace TradeBot.Messages
             return parameters;
         }
 
+        /// <summary>
+        /// Method checks parameters and return if they are correct.
+        /// </summary>
+        /// <param name="messageType">type of message</param>
+        /// <param name="parameters">list of parameters</param>
+        /// <returns>true if parameters are correct, false in other case</returns>
         private bool checkParams(MessageType messageType, List<string> parameters)
         {
             switch(messageType)

@@ -15,7 +15,15 @@ using System.Text;
 using System.Net;
 using SteamTrade.TradeOffer;
 using TradeBot.Web;
+using System.Net;
+using SteamTrade.TradeOffer;
+using TradeBot.Web;
+using log4net;
 
+
+/// <summary>
+/// Implementation of main bot functionallity 
+/// </summary>
 namespace TradeBot.Bot
 {
     public class BotCore
@@ -28,6 +36,7 @@ namespace TradeBot.Bot
         private bool cookiesAreInvalid = true;
         private Thread tradeOfferThread;
         private Thread expirationCheckThread;
+        private static ILog log = LogManager.GetLogger(typeof(BotCore));
 
 
         private CallbackManager callbackManager;
@@ -69,6 +78,7 @@ namespace TradeBot.Bot
             config = new BotConfig();
             if (!File.Exists("config.cfg"))
             {
+                log.Info("New Bot config created.");
                 config.createNew();
                 if (File.Exists("sentry.bin"))
                     File.Delete("sentry.bin");
@@ -77,11 +87,16 @@ namespace TradeBot.Bot
 
             if (config.login.Equals("") || config.password.Equals(""))
             {
-                Console.Write("Username: ");
-                config.login = Console.ReadLine();
+                //Console.Write("Username: ");
+                //config.login = Console.ReadLine();
 
-                Console.Write("Password: ");
-                config.password = Console.ReadLine();
+                //Console.Write("Password: ");
+                //config.password = Console.ReadLine();
+                log.Info("Set username and password for Steam account");
+                config.working = false;
+            } else
+            {
+                config.working = true;
             }
             #endregion
 
@@ -144,8 +159,7 @@ namespace TradeBot.Bot
 
             #region main_loop
 
-            Console.WriteLine("Connecting to Steam...");
-
+            log.Info("Connecting to Steam...");
             steamClient.Connect();
 
             config.working = true;
@@ -331,7 +345,7 @@ namespace TradeBot.Bot
         #region callback_handlers
         private void OnConnected(SteamClient.ConnectedCallback callback)
         {
-            Console.WriteLine("Connected to Steam! Logging in...");
+            log.Info("Connected to Steam! Logging in...");
 
             byte[] sentryHash = null;
             if (File.Exists("sentry.bin"))
@@ -355,6 +369,8 @@ namespace TradeBot.Bot
             if (authCode != null)
             {
                 Console.WriteLine("Updating sentryfile...");
+
+
 
                 int fileSize;
                 byte[] sentryHash;
@@ -396,7 +412,7 @@ namespace TradeBot.Bot
             //SteamGuard enabled -> need to generate code
             if (isSteamGuard || is2FA)
             {
-                Console.WriteLine("This account is SteamGuard protected!");
+                log.Info("This account is SteamGuard protected!");
 
                 if (is2FA)
                 {
@@ -407,7 +423,7 @@ namespace TradeBot.Bot
                     }
                     else
                     {
-                        Console.WriteLine("Generating SteamGuard code..");
+                        log.Info("Generating SteamGuard code..");
                         steamGuardCode = steamGuardAccount.GenerateSteamGuardCode();
                     }
                 }
@@ -422,16 +438,16 @@ namespace TradeBot.Bot
 
             if (callback.Result != EResult.OK)
             {
-                Console.WriteLine("Unable to logon to Steam: {0} / {1}", callback.Result, callback.ExtendedResult);
+                log.Info("Unable to logon to Steam: "+ callback.Result+ "/"+ callback.ExtendedResult);
 
                 config.working = false;
 
-                Console.WriteLine("Press any key to exit..");
-                Console.ReadKey();
+                //Console.WriteLine("Press any key to exit..");
+                //Console.ReadKey();
                 return;
             }
 
-            Console.WriteLine("Successfully logged on!");
+            log.Info("Successfully logged on!");
 
             myUserNonce = callback.WebAPIUserNonce;
 
@@ -452,7 +468,7 @@ namespace TradeBot.Bot
 
         private void OnWebApiUserNonce(SteamUser.WebAPIUserNonceCallback callback)
         {
-            Console.WriteLine("Received new WebAPIUserNonce.");
+            log.Info("Received new WebAPIUserNonce.");
 
             if (callback.Result == EResult.OK)
             {
@@ -467,7 +483,7 @@ namespace TradeBot.Bot
        
         private void OnDisconnected(SteamClient.DisconnectedCallback callback)
         {
-            Console.WriteLine("Disconnected from Steam, reconnecting in 5...");
+                log.Info("Disconnected from Steam, reconnecting in 5...");
 
             CancelTradeOfferPollingThread();
             CancelExpirationCheckThread();
@@ -480,7 +496,7 @@ namespace TradeBot.Bot
 
         private void OnLoggedOff(SteamUser.LoggedOffCallback callback)
         {
-            Console.WriteLine("Logged off of Steam: {0}", callback.Result);
+            log.Info(string.Format("Logged off of Steam: {0}", callback.Result));
             CancelTradeOfferPollingThread();
             CancelExpirationCheckThread();
             config.working = false;
@@ -799,6 +815,24 @@ namespace TradeBot.Bot
                 response.AppendLine("Please set your ETH address with !setethaddress comand.");
             }
             sendMessage(steamID, response.ToString());
+        }
+
+        public void stop()
+        {
+            config.working = false;
+        }
+
+        public void start()
+        {
+            config.working = true;
+        }
+
+        public void run()
+        {
+            while (config.working)
+            {
+                callbackManager.RunWaitCallbacks(TimeSpan.FromSeconds(1));
+            }
         }
         #endregion
     }

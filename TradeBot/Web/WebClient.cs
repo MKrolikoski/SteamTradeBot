@@ -4,13 +4,26 @@ using System.Net;
 
 namespace TradeBot.Web
 {
+    /// <summary>
+    /// Class that is used to sending requests.
+    /// </summary>
     class WebClient
     {
         private HttpMethod httpMethod { get; set; }
         private string endPoint { get; set; }
         private string data { get; set; }
 
+        /// <summary>
+        /// Default class constructor
+        /// </summary>
         public WebClient() { }
+
+        /// <summary>
+        /// Class constructor that set all fields in class.
+        /// </summary>
+        /// <param name="httpMethod">type of HTTP method (GET,POST)</param>
+        /// <param name="endPoint">endpoint to send request</param>
+        /// <param name="data">body of request</param>
         public WebClient(HttpMethod httpMethod, string endPoint, string data)
         {
             this.httpMethod = httpMethod;
@@ -18,6 +31,10 @@ namespace TradeBot.Web
             this.data = data;
         }
 
+        /// <summary>
+        /// Method returns response from endpoint.
+        /// </summary>
+        /// <returns>string with endpoint response</returns>
         public string getResponse()
         {
             string response = null;
