@@ -17,8 +17,6 @@ namespace TradeBot
         [STAThread]
         static void Main(string[] args)
         {
-           // BotCore bot = new BotCore();
-
             var form = new MainWindowForm();
             ((log4net.Repository.Hierarchy.Hierarchy)log4net.LogManager.GetLoggerRepository()).Root.AddAppender(form);
             Application.Run(form);

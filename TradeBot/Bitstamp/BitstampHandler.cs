@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
+using TradeBot.Bot;
 using TradeBot.Web;
 
 namespace TradeBot.Bitstamp
@@ -35,10 +36,10 @@ namespace TradeBot.Bitstamp
             var response = client.Execute(request);
             if (response.StatusCode == HttpStatusCode.OK)
             {
-                Console.WriteLine(response.Content);
+                Bot.BotCore.log.Info("Balance:\n" + response.Content);
             }
             else
-                Console.WriteLine("Error response");
+                Bot.BotCore.log.Error("Error while checking balance");
         }
 
 
@@ -92,13 +93,13 @@ namespace TradeBot.Bitstamp
             request.AddParameter("amount", amount.ToString(CultureInfo.GetCultureInfo("en-US")));
             var response = client.Execute(request);
             if (WebUtils.GetJSONAtribute(response.Content, "status") != "error")
-            {              
-                //Console.WriteLine(response.Content);
+            {
+                BotCore.log.Info("Sent " + amount + "Eth to: "+ to + ".");
                 return true;
             }
             else
             {
-                //Console.WriteLine(response.Content);
+                BotCore.log.Error("Eth transfer to: " + to + " failed.");
                 return false;
             }
         }
@@ -122,6 +123,7 @@ namespace TradeBot.Bitstamp
             {
                 if(item.type == 0 && (date - (item.datetime.AddHours(2))).Days == 0 && amount == double.Parse(item.btc, CultureInfo.GetCultureInfo("en-US")))
                 {
+                    BotCore.log.Info("Received " + amount + "Eth.");
                     return true;
                 }
             }

@@ -45,6 +45,7 @@ namespace TradeBot.Bot
                             {
                                 Bot.sendMessage(offer.PartnerSteamId, response);
                                 offer.Decline();
+                                BotCore.log.Info("Deleted transaction from: " + user.SteamID + " Reason: Tradeoffer not correct.");
                             }
                         }
                         else
@@ -58,29 +59,34 @@ namespace TradeBot.Bot
                                     Bot.AcceptAllTradeConfirmations();
                                     tradeoffer.Accepted = true;
                                     databaseHandler.UpdateTradeOffer(tradeoffer);
-                                    response = "Sending ETH to " + user.WalletAddress + ".";
+                                    BotCore.log.Info("Tradeoffer from: " + user.SteamID + " accepted(" + tradeoffer.Amount + " keys).");
+                                    response = "Tradeoffer confirmed.\n";
+                                    response += "Sending ETH to " + user.WalletAddress + ".";
                                     Bot.sendMessage(offer.PartnerSteamId, response);
                                     if (Bot.sendEth(user.WalletAddress, databaseHandler.getTransactionEthValue(tradeoffer)))
                                     {
                                         response = "Etherneum transfer completed successfully.";
                                         Bot.sendMessage(offer.PartnerSteamId, response);
                                         databaseHandler.DeleteTransaction(transaction);
+                                        BotCore.log.Info("Deleted transaction from: " + user.SteamID + " Reason: Tradeoffer not correct.");
                                     }
                                     else
                                     {
                                         response = "Error while transfering etherneum.\nMake sure you've correctly set your ETH address and/or enabled ETH transactions on your account.";
                                         Bot.sendMessage(offer.PartnerSteamId, response);
+                                        BotCore.log.Error("Error while transfering etherneum to: " + user.WalletAddress);
                                     }
                                 }
                                 else
                                 {
-                                    Console.WriteLine("Error while accepting trade");
+                                    BotCore.log.Error("Error while accepting tradeoffer from: " + user.SteamID);
                                 }
                             }
                             else
                             {
                                 Bot.sendMessage(offer.PartnerSteamId, response);
                                 offer.Decline();
+                                BotCore.log.Info("Deleted transaction from: " + user.SteamID + " Reason: Tradeoffer not correct.");
                             }
                         }
                     }
@@ -96,9 +102,11 @@ namespace TradeBot.Bot
                                 if (acceptResp.Accepted)
                                 {
                                     Bot.AcceptAllTradeConfirmations();
+                                    BotCore.log.Info("Tradeoffer from: " + user.SteamID + " accepted(" + tradeoffer.Amount + " keys).");
                                     response = "Trade offer confirmed.";
                                     Bot.sendMessage(offer.PartnerSteamId, response);
                                     databaseHandler.DeleteTransaction(transaction);
+                                    BotCore.log.Info("Deleted transaction from: " + user.SteamID + " Reason: Transaction completed.");
                                 }
                             }
                         }
@@ -109,6 +117,7 @@ namespace TradeBot.Bot
                                 response = "Etherneum transfer completed successfully.";
                                 Bot.sendMessage(offer.PartnerSteamId, response);
                                 databaseHandler.DeleteTransaction(transaction);
+                                BotCore.log.Info("Deleted transaction from: " + user.SteamID + " Reason: Transaction completed.");
                             }
                         }
                     }
@@ -117,12 +126,13 @@ namespace TradeBot.Bot
                 {
                     Bot.sendMessage(offer.PartnerSteamId, "Create a transaction or confirm current one before sending trade offers.");
                     offer.Decline();
+                    BotCore.log.Info("Declined tradeoffer from: " + user.SteamID + " Reason: No transaction or transaction not confirmed.");
                 }
             }
             else
             {
-                Console.WriteLine("User not in database.");
                 offer.Decline();
+                BotCore.log.Info("Declined tradeoffer from unknown user");
             }
         }
 

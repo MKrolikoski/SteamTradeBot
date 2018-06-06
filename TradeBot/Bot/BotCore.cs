@@ -15,11 +15,7 @@ using System.Text;
 using System.Net;
 using SteamTrade.TradeOffer;
 using TradeBot.Web;
-using System.Net;
-using SteamTrade.TradeOffer;
-using TradeBot.Web;
 using log4net;
-
 
 /// <summary>
 /// Implementation of main bot functionallity 
@@ -36,7 +32,7 @@ namespace TradeBot.Bot
         private bool cookiesAreInvalid = true;
         private Thread tradeOfferThread;
         private Thread expirationCheckThread;
-        private static ILog log = LogManager.GetLogger(typeof(BotCore));
+        public static ILog log = LogManager.GetLogger(typeof(BotCore));
 
 
         private CallbackManager callbackManager;
@@ -87,11 +83,6 @@ namespace TradeBot.Bot
 
             if (config.login.Equals("") || config.password.Equals(""))
             {
-                //Console.Write("Username: ");
-                //config.login = Console.ReadLine();
-
-                //Console.Write("Password: ");
-                //config.password = Console.ReadLine();
                 log.Info("Set username and password for Steam account");
                 config.working = false;
             } else
@@ -162,17 +153,17 @@ namespace TradeBot.Bot
             log.Info("Connecting to Steam...");
             steamClient.Connect();
 
-            config.working = true;
+            //config.working = true;
 
-            while (config.working)
-            {
-                callbackManager.RunCallbacks();
-                if (tradeOfferManager != null)
-                {
-                    tradeOfferManager.HandleNextPendingTradeOfferUpdate();
-                }
-                Thread.Sleep(1);
-            }
+            //while (config.working)
+            //{
+            //    callbackManager.RunCallbacks();
+            //    if (tradeOfferManager != null)
+            //    {
+            //        tradeOfferManager.HandleNextPendingTradeOfferUpdate();
+            //    }
+            //    Thread.Sleep(1);
+            //}
             #endregion
         }
 
@@ -191,7 +182,7 @@ namespace TradeBot.Bot
             }
             catch (SteamGuardAccount.WGTokenInvalidException)
             {
-                Console.WriteLine("Invalid session when trying to fetch trade confirmations.");
+                log.Error("Invalid session when trying to fetch trade confirmations.");
                 return false;
             }
             return true;
@@ -205,7 +196,7 @@ namespace TradeBot.Bot
                 steamGuardAccount = Newtonsoft.Json.JsonConvert.DeserializeObject<SteamAuth.SteamGuardAccount>(File.ReadAllText("steamguard.cfg"));
                 return true;
             }
-            Console.WriteLine("steamguard.cfg not found.");
+            log.Error("steamguard.cfg not found.");
             return false;
         }
         #endregion
@@ -260,7 +251,7 @@ namespace TradeBot.Bot
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Error while polling trade offers: " + e);
+                    log.Error("Error while polling trade offers: " + e);
                 }
 
                 Thread.Sleep(tradeOfferPollingIntervalSecs * 1000);
@@ -286,12 +277,12 @@ namespace TradeBot.Bot
 
                 if (!IsLoggedIn)
                 {
-                    Console.WriteLine("Authentication failed, retrying in 2s...");
+                    log.Info("Authentication failed, retrying in 2s...");
                     Thread.Sleep(2000);
                 }
             } while (!IsLoggedIn);
 
-            Console.WriteLine("User Authenticated!");
+            log.Info("User Authenticated!");
 
 
             tradeOfferManager = new TradeOfferManager(config.api_key, steamWeb);
@@ -312,7 +303,7 @@ namespace TradeBot.Bot
             {
                 if (!steamWeb.VerifyCookies())
                 {
-                    Console.WriteLine("Cookies are invalid. Need to re-authenticate.");
+                    log.Info("Cookies are invalid. Need to re-authenticate.");
                     cookiesAreInvalid = true;
                     steamUser.RequestWebAPIUserNonce();
                     return false;
@@ -320,7 +311,7 @@ namespace TradeBot.Bot
             }
             catch
             {
-                Console.WriteLine("Cookie check failed. http://steamcommunity.com is possibly down.");
+                log.Error("Cookie check failed. http://steamcommunity.com is possibly down.");
             }
 
             return true;
@@ -368,7 +359,7 @@ namespace TradeBot.Bot
         {
             if (authCode != null)
             {
-                Console.WriteLine("Updating sentryfile...");
+                log.Info("Updating sentryfile...");
 
 
 
@@ -400,7 +391,7 @@ namespace TradeBot.Bot
                     SentryFileHash = sentryHash,
                 });
 
-                Console.WriteLine("Done!");
+                log.Info("Sentryfile updated.");
             }
         }
 
@@ -418,7 +409,8 @@ namespace TradeBot.Bot
                 {
                     if (steamGuardAccount.SharedSecret.Equals(""))
                     {
-                        Console.Write("Please enter SteamGuard code from you authentication device: ");
+                        log.Error("Shared-secret not set.");
+                        Console.WriteLine("Please enter SteamGuard code from you authentication device: ");
                         steamGuardCode = Console.ReadLine();
                     }
                     else
@@ -442,8 +434,7 @@ namespace TradeBot.Bot
 
                 config.working = false;
 
-                //Console.WriteLine("Press any key to exit..");
-                //Console.ReadKey();
+
                 return;
             }
 
@@ -457,6 +448,8 @@ namespace TradeBot.Bot
             //730 - appID for CS:GO
             steamInventory = new Inventory(steamID, 730);
             updateCurrentKeysAndEthAmount();
+            log.Info("Available keys: " + availableKeys);
+            log.Info("Available eth: " + availableEth);
         }
 
         private void OnLoginKey(SteamUser.LoginKeyCallback callback)
@@ -477,7 +470,7 @@ namespace TradeBot.Bot
             }
             else
             {
-                Console.WriteLine("WebAPIUserNonce Error: " + callback.Result);
+                log.Error("WebAPIUserNonce Error: " + callback.Result);
             }
         }
        
@@ -748,8 +741,8 @@ namespace TradeBot.Bot
         {
             availableKeys = getKeysAmountFromInventory() - databaseHandler.getReservedKeysAmount();
             availableEth = bitstampHandler.getAvailableEth() - databaseHandler.getReservedEthAmount();
-            Console.WriteLine("Available keys: " + availableKeys);
-            Console.WriteLine("Available eth: " + availableEth);
+            //log.Info("Available keys: " + availableKeys);
+            //log.Info("Available eth: " + availableEth);
         }
 
         public void sendMessage(SteamID to, string message)
@@ -816,6 +809,7 @@ namespace TradeBot.Bot
             }
             sendMessage(steamID, response.ToString());
         }
+        #endregion
 
         public void stop()
         {
@@ -831,10 +825,14 @@ namespace TradeBot.Bot
         {
             while (config.working)
             {
-                callbackManager.RunWaitCallbacks(TimeSpan.FromSeconds(1));
+                callbackManager.RunCallbacks();
+                if (tradeOfferManager != null)
+                {
+                    tradeOfferManager.HandleNextPendingTradeOfferUpdate();
+                }
+                Thread.Sleep(1);
             }
         }
-        #endregion
-    }
+        }
 }
 

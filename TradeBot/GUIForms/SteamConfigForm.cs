@@ -66,9 +66,6 @@ namespace TradeBot.GUIForms
                     case "password":
                         config.password = (string)dgv.Cells[1].Value;
                         break;
-                    case "shared_secret":
-                        config.shared_secret = (string)dgv.Cells[1].Value;
-                        break;
                     case "api_key":
                         config.api_key = (string)dgv.Cells[1].Value;
                         break;
