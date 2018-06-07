@@ -119,20 +119,33 @@ namespace TradeBot.Database
         public double getTransactionEthValue(string steamID)
         {
             Tradeoffer tradeoffer = GetUserTradeOffer(steamID);
-            return tradeoffer.Amount * tradeoffer.CostPerOne;
+            return Math.Round(tradeoffer.Amount * tradeoffer.CostPerOne, 8);
         }
 
+        /// <summary>
+        /// Method checks value of transaction in ETH
+        /// </summary>
+        /// <param name="tradeoffer">tradeoffer from db</param>
+        /// <returns>value of transaction in ETH</returns>
         public double getTransactionEthValue(Tradeoffer tradeoffer)
-        {        
-            return tradeoffer.Amount * tradeoffer.CostPerOne;
+        {
+            return Math.Round(tradeoffer.Amount * tradeoffer.CostPerOne, 8);
         }
 
+        /// <summary>
+        /// Method checks value of transaction in ETH
+        /// </summary>
+        /// <param name="transaction">transaction from db</param>
+        /// <returns>value of transaction in ETH</returns>
         public double getTransactionEthValue(Transaction transaction)
         {
             Tradeoffer tradeoffer = GetTradeOffer(transaction);
-            return tradeoffer.Amount * tradeoffer.CostPerOne;
+            return Math.Round(tradeoffer.Amount * tradeoffer.CostPerOne,8);
         }
 
+        /// <summary>
+        /// Method for deleting expired transactions
+        /// </summary>
         public void DeleteExpiredTransactions()
         {
             List<Transaction> transactions = GetAllTransactions();
@@ -146,7 +159,12 @@ namespace TradeBot.Database
                 }
             }
         }
-
+        
+        /// <summary>
+        /// Method for deleting specified transaction 
+        /// </summary>
+        /// <param name="transaction">transaction to be deleted</param>
+        /// <returns>true if transaction was successfully deleted</returns>
         public new bool DeleteTransaction(Transaction transaction)
         {
             string eventArg;
@@ -168,6 +186,10 @@ namespace TradeBot.Database
             return false;
         }
 
+        /// <summary>
+        /// Method for getting amount of reserved keys in db transactions
+        /// </summary>
+        /// <returns>amount of keys</returns>
         public int getReservedKeysAmount()
         {
             List<Transaction> transactions = GetAllTransactions();
@@ -183,6 +205,10 @@ namespace TradeBot.Database
             return count;
         }
 
+        /// <summary>
+        /// Method for getting amount of reserved eth in db transactions
+        /// </summary>
+        /// <returns>amount of eth</returns>
         public double getReservedEthAmount()
         {
             List<Transaction> transactions = GetAllTransactions();

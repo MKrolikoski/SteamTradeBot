@@ -56,11 +56,6 @@ namespace TradeBot.Bot
         [JsonProperty("sell_price")]
         public double sell_price { get; set; }
         
-        /// <summary>
-        /// Charged transaction fee.
-        /// </summary>
-        [JsonProperty("transaction_toll")]
-        public double transaction_toll { get; set; }
 
         /// <summary>
         /// Save current confiugration to file.
@@ -94,8 +89,7 @@ namespace TradeBot.Bot
             sb.Append("  \"password\": \"\",\r\n");
             sb.Append("  \"api_key\": \"\",\r\n");
             sb.Append("  \"buy_price\": 1.7,\r\n");
-            sb.Append("  \"sell_price\": 1.6,\r\n");
-            sb.Append("  \"transaction_toll\": 0.1\r\n");
+            sb.Append("  \"sell_price\": 1.6\r\n");
             sb.Append("}\r\n");
             File.WriteAllText("config.cfg", sb.ToString());
         }

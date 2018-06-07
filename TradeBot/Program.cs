@@ -20,6 +20,9 @@ namespace TradeBot
             var form = new MainWindowForm();
             ((log4net.Repository.Hierarchy.Hierarchy)log4net.LogManager.GetLoggerRepository()).Root.AddAppender(form);
             Application.Run(form);
+
+
+
             //form.ShowDialog();
 
             //BotCore bot = new BotCore(UserHandlerCreator);

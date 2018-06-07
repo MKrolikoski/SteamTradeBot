@@ -52,34 +52,29 @@ namespace TradeBot.Bot
                         {
                             if (CheckTradeOffer(tradeoffer, offer, MessageType.SELL, out response))
                             {
+                                response += "\nSending ETH to " + user.WalletAddress + ".";
                                 Bot.sendMessage(offer.PartnerSteamId, response);
-                                TradeOfferAcceptResponse acceptResp = offer.Accept();
-                                if (acceptResp.Accepted)
+                                tradeoffer.Accepted = true;
+                                databaseHandler.UpdateTradeOffer(tradeoffer);
+                                if (Bot.sendEth(user.WalletAddress, databaseHandler.getTransactionEthValue(tradeoffer)))
                                 {
-                                    Bot.AcceptAllTradeConfirmations();
-                                    tradeoffer.Accepted = true;
-                                    databaseHandler.UpdateTradeOffer(tradeoffer);
-                                    BotCore.log.Info("Tradeoffer from: " + user.SteamID + " accepted(" + tradeoffer.Amount + " keys).");
-                                    response = "Tradeoffer confirmed.\n";
-                                    response += "Sending ETH to " + user.WalletAddress + ".";
-                                    Bot.sendMessage(offer.PartnerSteamId, response);
-                                    if (Bot.sendEth(user.WalletAddress, databaseHandler.getTransactionEthValue(tradeoffer)))
+                                    TradeOfferAcceptResponse acceptResp = offer.Accept();
+                                    if (acceptResp.Accepted)
                                     {
-                                        response = "Etherneum transfer completed successfully.";
+                                        Bot.AcceptAllTradeConfirmations();
+                                        BotCore.log.Info("Tradeoffer from: " + user.SteamID + " accepted(" + tradeoffer.Amount + " keys).");
+                                        response = "Etherneum transfer completed successfully.\n";
+                                        response += "Tradeoffer confirmed.";
                                         Bot.sendMessage(offer.PartnerSteamId, response);
                                         databaseHandler.DeleteTransaction(transaction);
                                         BotCore.log.Info("Deleted transaction from: " + user.SteamID + " Reason: Tradeoffer not correct.");
-                                    }
-                                    else
-                                    {
-                                        response = "Error while transfering etherneum.\nMake sure you've correctly set your ETH address and/or enabled ETH transactions on your account.";
-                                        Bot.sendMessage(offer.PartnerSteamId, response);
-                                        BotCore.log.Error("Error while transfering etherneum to: " + user.WalletAddress);
-                                    }
+                                    }                                      
                                 }
                                 else
                                 {
-                                    BotCore.log.Error("Error while accepting tradeoffer from: " + user.SteamID);
+                                    response = "Error while transfering etherneum.\nMake sure you've correctly set your ETH address and/or enabled ETH transactions on your account.";
+                                    Bot.sendMessage(offer.PartnerSteamId, response);
+                                    BotCore.log.Error("Error while transfering etherneum to: " + user.WalletAddress);
                                 }
                             }
                             else
@@ -114,10 +109,17 @@ namespace TradeBot.Bot
                         {
                             if (Bot.sendEth(user.WalletAddress, databaseHandler.getTransactionEthValue(tradeoffer)))
                             {
-                                response = "Etherneum transfer completed successfully.";
-                                Bot.sendMessage(offer.PartnerSteamId, response);
-                                databaseHandler.DeleteTransaction(transaction);
-                                BotCore.log.Info("Deleted transaction from: " + user.SteamID + " Reason: Transaction completed.");
+                                TradeOfferAcceptResponse acceptResp = offer.Accept();
+                                if (acceptResp.Accepted)
+                                {
+                                    Bot.AcceptAllTradeConfirmations();
+                                    BotCore.log.Info("Tradeoffer from: " + user.SteamID + " accepted(" + tradeoffer.Amount + " keys).");
+                                    response = "Etherneum transfer completed successfully.\n";
+                                    response += "Tradeoffer confirmed.";
+                                    Bot.sendMessage(offer.PartnerSteamId, response);
+                                    databaseHandler.DeleteTransaction(transaction);
+                                    BotCore.log.Info("Deleted transaction from: " + user.SteamID + " Reason: Tradeoffer not correct.");
+                                }
                             }
                         }
                     }

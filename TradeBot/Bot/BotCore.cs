@@ -59,13 +59,13 @@ namespace TradeBot.Bot
         private int tradeOfferPollingIntervalSecs;
         private int transactionExpirationCheckIntervalMins;
 
-        public int availableKeys;
-        public double availableEth;
+        private int availableKeys;
+        private double availableEth;
 
         private BotConfig config;
 
         public readonly SteamTrade.SteamWeb steamWeb;
-        public bool IsLoggedIn { get; private set; }
+        private bool IsLoggedIn { get; set; }
         #endregion
 
         public BotCore(UserHandlerCreator handler)
@@ -148,27 +148,17 @@ namespace TradeBot.Bot
 
             #endregion
 
-            #region main_loop
-
             log.Info("Connecting to Steam...");
             steamClient.Connect();
 
-            //config.working = true;
-
-            //while (config.working)
-            //{
-            //    callbackManager.RunCallbacks();
-            //    if (tradeOfferManager != null)
-            //    {
-            //        tradeOfferManager.HandleNextPendingTradeOfferUpdate();
-            //    }
-            //    Thread.Sleep(1);
-            //}
-            #endregion
         }
 
 
         #region steamguard_methods
+        /// <summary>
+        /// Accepts trade confirmations 
+        /// </summary>
+        /// <returns>true if there were no errors, false in other case</returns>
         public bool AcceptAllTradeConfirmations()
         {
             steamGuardAccount.Session.SteamLogin = steamWeb.Token;
@@ -189,7 +179,7 @@ namespace TradeBot.Bot
         }
 
 
-        bool GetSteamGuardAccountDetails()
+        private bool GetSteamGuardAccountDetails()
         {
             if (File.Exists("steamguard.cfg"))
             {
@@ -202,6 +192,9 @@ namespace TradeBot.Bot
         #endregion
 
         #region transaction_expiration_control  
+        /// <summary>
+        /// Starts thread that checks if transactions in db are expired
+        /// </summary>
         protected void SpawnExpirationCheckThread()
         {
             if (expirationCheckThread == null)
@@ -211,11 +204,17 @@ namespace TradeBot.Bot
             }
         }
 
+        /// <summary>
+        /// Cancels thread that checks if transactions in db are expired
+        /// </summary>
         protected void CancelExpirationCheckThread()
         {
             expirationCheckThread = null;
         }
 
+        /// <summary>
+        /// Method that deletes expired transactions
+        /// </summary>
         protected void DeleteExpiredTransactions()
         {
             while (expirationCheckThread == Thread.CurrentThread)
@@ -226,7 +225,10 @@ namespace TradeBot.Bot
         }
         #endregion
 
-        #region tradeoffer_methods  
+        #region tradeoffer_methods
+        /// <summary>
+        /// Starts thread that handles steam tradeoffers
+        /// </summary>
         protected void SpawnTradeOfferPollingThread()
         {
             if (tradeOfferThread == null)
@@ -236,11 +238,17 @@ namespace TradeBot.Bot
             }
         }
 
+        /// <summary>
+        /// Cancels thread that handles steam tradeoffers
+        /// </summary>
         protected void CancelTradeOfferPollingThread()
         {
             tradeOfferThread = null;
         }
 
+        /// <summary>
+        /// Method for enqueueing steamtradeoffers
+        /// </summary>
         protected void TradeOfferPollingFunction()
         {
             while (tradeOfferThread == Thread.CurrentThread)
@@ -257,6 +265,7 @@ namespace TradeBot.Bot
                 Thread.Sleep(tradeOfferPollingIntervalSecs * 1000);
             }
         }
+
 
         public void TradeOfferRouter(SteamTrade.TradeOffer.TradeOffer offer)
         {
@@ -511,17 +520,6 @@ namespace TradeBot.Bot
             switch (message.messageType)
             {
                 case MessageType.HELP:
-                    //TODELETE
-                    Transaction transasaction = databaseHandler.GetUserTransaction(message.from.ToString());
-                    if (transasaction != null)
-                        databaseHandler.DeleteTransaction(transasaction);
-                    User user = databaseHandler.GetUser(message.from.ToString());
-                    if (user == null)
-                    {
-                        user = new User(message.from.ToString(), "");
-                        databaseHandler.AddUser(user);
-                    }
-                    //
                     sendMessage(message.from, "Available commands: \n!help, \n!sell [number_of_keys], \n!buy [number_of_keys], \n!setethaddress [eth_address], \n!info, \n!confirm"); break;
                 case MessageType.SELL:
                     if (createTransaction(message.from, Convert.ToInt32(message.parameters[0]), message.messageType))
@@ -557,6 +555,7 @@ namespace TradeBot.Bot
                     sendMessage(message.from, "Unknown command. Type !help for the list of commands and their arguments."); break;
             }
         }
+
 
 
         private void OnTransactionDeleted(object sender, string e)
@@ -595,6 +594,9 @@ namespace TradeBot.Bot
 
         private void OnFriendAdded(SteamFriends.FriendAddedCallback callback)
         {
+            User user = new User(callback.SteamID.ToString(), "");
+            databaseHandler.AddUser(user);
+            log.Info("Added new user: " + user.SteamID);
             sendMessage(callback.SteamID, "Welcome. Type !help for the list of commands.");
         }
 
@@ -695,6 +697,10 @@ namespace TradeBot.Bot
             sendMessage(steamID, response.ToString());
         }
 
+        /// <summary>
+        /// Method to get bot's database handler
+        /// </summary>
+        /// <returns>database handler</returns>
         public DatabaseHandler GetDatabaseHandler()
         {
             return databaseHandler;
@@ -702,16 +708,32 @@ namespace TradeBot.Bot
         #endregion
 
         #region bitstmap
+        /// <summary>
+        /// Sends eth to specified address
+        /// </summary>
+        /// <param name="address">address to which eth is sent</param>
+        /// <param name="amount">amount of eth</param>
+        /// <returns>true if transfer was successful, false otherwise</returns>
         public bool sendEth(string address, double amount)
         {
             return bitstampHandler.sendEth(address, amount);
         }
 
+        /// <summary>
+        /// return bot's eth address
+        /// </summary>
+        /// <returns>eth address</returns>
         public string getEthAddress()
         {
             return bitstampHandler.getEthAddress();
         }
 
+        /// <summary>
+        /// checks if eth has been transfered
+        /// </summary>
+        /// <param name="date">date when transaction was created</param>
+        /// <param name="amount">eth amount that was supposed to be sent</param>
+        /// <returns>true if transfered, false otherwise</returns>
         public bool checkIfTransfered(DateTime date, double amount)
         {
             return bitstampHandler.checkIfTransfered(date, amount);
@@ -745,11 +767,21 @@ namespace TradeBot.Bot
             //log.Info("Available eth: " + availableEth);
         }
 
+        /// <summary>
+        /// Method for sending steam message
+        /// </summary>
+        /// <param name="to">steam id of person we want to send message to</param>
+        /// <param name="message">message</param>
         public void sendMessage(SteamID to, string message)
         {
             steamFriends.SendChatMessage(to, EChatEntryType.ChatMsg, message);
         }
 
+        /// <summary>
+        /// Method for sending steam message
+        /// </summary>
+        /// <param name="to">steam id of person we want to send message to</param>
+        /// <param name="message">message</param>
         public void sendMessage(string to, string message)
         {
             SteamID steamID;

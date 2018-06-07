@@ -1,7 +1,5 @@
-﻿using Newtonsoft.Json;
-using RestSharp;
+﻿using RestSharp;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
 using TradeBot.Bot;
@@ -83,6 +81,12 @@ namespace TradeBot.Bitstamp
             return -1;
         }
 
+        /// <summary>
+        /// Sends eth to specified address
+        /// </summary>
+        /// <param name="to">address to which eth is sent</param>
+        /// <param name="amount">amount of eth</param>
+        /// <returns>true if transfer was successful, false otherwise</returns>
         public bool sendEth(string to, double amount)
         {
             
@@ -100,10 +104,15 @@ namespace TradeBot.Bitstamp
             else
             {
                 BotCore.log.Error("Eth transfer to: " + to + " failed.");
+                BotCore.log.Error("Reason: " + response.Content);
                 return false;
             }
         }
 
+        /// <summary>
+        /// gets user transactions from bitstamp
+        /// </summary>
+        /// <returns>json response</returns>
         public string getUserTransactions()
         {
             var baseUrl = "https://www.bitstamp.net/api/user_transactions/";
@@ -115,6 +124,12 @@ namespace TradeBot.Bitstamp
             return "Error";
         }
 
+        /// <summary>
+        /// checks if eth has been transfered
+        /// </summary>
+        /// <param name="date">date when transaction was created</param>
+        /// <param name="amount">eth amount that was supposed to be sent</param>
+        /// <returns>true if eth has been transfered, false otherwise</returns>
         public bool checkIfTransfered(DateTime date, double amount)
         {
             string transactions = getUserTransactions();
@@ -131,7 +146,10 @@ namespace TradeBot.Bitstamp
         }
 
 
-
+        /// <summary>
+        /// gets eth address
+        /// </summary>
+        /// <returns>eth address</returns>
         public string getEthAddress()
         {
             return account.getEthAddress();

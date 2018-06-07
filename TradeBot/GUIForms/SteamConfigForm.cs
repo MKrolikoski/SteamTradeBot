@@ -75,9 +75,6 @@ namespace TradeBot.GUIForms
                     case "sell_price":
                         config.sell_price = double.Parse((string)dgv.Cells[1].Value, System.Globalization.CultureInfo.InvariantCulture);
                         break;
-                    case "transaction_toll":
-                        config.transaction_toll = double.Parse((string)dgv.Cells[1].Value, System.Globalization.CultureInfo.InvariantCulture);
-                        break;
                 }
             
             }
