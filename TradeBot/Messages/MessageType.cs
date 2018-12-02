@@ -36,12 +36,36 @@ namespace TradeBot.Messages
         /// </summary>
         INFO,
         /// <summary>
-        /// 
+        /// wrong parameters in a message
         /// </summary>
         BADPARAMS,
         /// <summary>
         /// status when message cannot be parsed
         /// </summary>
-        UNKNOWN
+        UNKNOWN,
+        /// <summary>
+        /// add an admin
+        /// </summary>
+        ADDADMIN,
+        /// <summary>
+        /// removes an admin
+        /// </summary>
+        REMOVEADMIN,
+        /// <summary>
+        /// send message
+        /// </summary>
+        SENDMESSAGE,
+        /// <summary>
+        /// prints active offers
+        /// </summary>
+        PRINTOFFERS,
+        /// <summary>
+        /// inform bot that money has been transfered
+        /// </summary>
+        MONEYTRANSFERRED,
+        /// <summary>
+        /// exits program
+        /// </summary>
+        Exit
     }
 }

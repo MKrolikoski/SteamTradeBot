@@ -36,5 +36,10 @@ namespace TradeBot.Bitstamp
         {
             return config.eth_address;
         }
+
+        public string getBtcAddress()
+        {
+            return config.btc_address;
+        }
     }
 }

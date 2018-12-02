@@ -53,9 +53,33 @@ namespace TradeBot.Bot
         /// <summary>
         /// Selling coefficient.
         /// </summary>
-        [JsonProperty("sell_price")]
-        public double sell_price { get; set; }
-        
+        [JsonProperty("sell_price_normal")]
+        public double sell_price_normal { get; set; }
+
+        /// <summary>
+        /// Esports key price
+        /// </summary>
+        [JsonProperty("sell_price_esports")]
+        public double sell_price_esports { get; set; }
+
+        /// <summary>
+        /// Hydra key price
+        /// </summary>
+        [JsonProperty("sell_price_hydra")]
+        public double sell_price_hydra { get; set; }
+
+        /// <summary>
+        /// available money
+        /// </summary>
+        [JsonProperty("available_money")]
+        public double available_money { get; set; }
+
+        /// <summary>
+        /// List of admins
+        /// </summary>
+        [JsonProperty("admins")]
+        public List<string> admins { get; set; }
+
 
         /// <summary>
         /// Save current confiugration to file.
@@ -89,7 +113,11 @@ namespace TradeBot.Bot
             sb.Append("  \"password\": \"\",\r\n");
             sb.Append("  \"api_key\": \"\",\r\n");
             sb.Append("  \"buy_price\": 1.7,\r\n");
-            sb.Append("  \"sell_price\": 1.6\r\n");
+            sb.Append("  \"sell_price_normal\": 1.6,\r\n");
+            sb.Append("  \"sell_price_esports\": 1.2,\r\n");
+            sb.Append("  \"sell_price_hydra\": 0.8,\r\n");
+            sb.Append("  \"available_money\": 20.0,\r\n");
+            sb.Append("  \"admins\": []\r\n");
             sb.Append("}\r\n");
             File.WriteAllText("config.cfg", sb.ToString());
         }

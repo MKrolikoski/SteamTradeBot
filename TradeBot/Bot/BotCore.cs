@@ -16,9 +16,10 @@ using System.Net;
 using SteamTrade.TradeOffer;
 using TradeBot.Web;
 using log4net;
+using TradeBot.Utils;
 
 /// <summary>
-/// Implementation of main bot functionallity 
+/// Implementation of main bot functionality 
 /// </summary>
 namespace TradeBot.Bot
 {
@@ -55,18 +56,21 @@ namespace TradeBot.Bot
         private string myUniqueId;
 
         private Inventory steamInventory;
+        private Dictionary<SteamTrade.TradeOffer.TradeOffer, bool> pendingSteamOffers;
 
         private int tradeOfferPollingIntervalSecs;
         private int transactionExpirationCheckIntervalMins;
 
         private int availableKeys;
         private double availableEth;
+        private double availableBtc;
 
         private BotConfig config;
 
         public readonly SteamTrade.SteamWeb steamWeb;
         private bool IsLoggedIn { get; set; }
         #endregion
+
 
         public BotCore(UserHandlerCreator handler)
         {
@@ -114,6 +118,8 @@ namespace TradeBot.Bot
             steamWeb = new SteamTrade.SteamWeb();
             GetSteamGuardAccountDetails();
 
+            pendingSteamOffers = new Dictionary<SteamTrade.TradeOffer.TradeOffer, bool>(new TradeOfferEqualityComparer());
+
             #endregion
 
             #region events_subscription
@@ -142,13 +148,13 @@ namespace TradeBot.Bot
 
             messageHandler.MessageProcessedEvent += OnMessageProcessed;
 
-            databaseHandler.TransactionDeletedEvent += OnTransactionDeleted;
+            //databaseHandler.TransactionDeletedEvent += OnTransactionDeleted;
 
             ServicePointManager.ServerCertificateValidationCallback += steamWeb.ValidateRemoteCertificate;
 
             #endregion
 
-            log.Info("Connecting to Steam...");
+            //log.Info("Connecting to Steam...");
             steamClient.Connect();
 
         }
@@ -219,7 +225,8 @@ namespace TradeBot.Bot
         {
             while (expirationCheckThread == Thread.CurrentThread)
             {
-                databaseHandler.DeleteExpiredTransactions();
+                databaseHandler.DeleteInactiveTransactions(pendingSteamOffers);
+                databaseHandler.DeleteExpiredTransactions(pendingSteamOffers);
                 Thread.Sleep(transactionExpirationCheckIntervalMins * 1000 * 60);
             }
         }
@@ -291,15 +298,20 @@ namespace TradeBot.Bot
                 }
             } while (!IsLoggedIn);
 
-            log.Info("User Authenticated!");
-
+            //log.Info("User Authenticated!");
+            log.Info("Successfully logged in.");
 
             tradeOfferManager = new TradeOfferManager(config.api_key, steamWeb);
             SubscribeTradeOffer(tradeOfferManager);
             cookiesAreInvalid = false;
 
+            //log.Info("Available keys: " + availableKeys);
+            //log.Info("Available eth: " + availableEth);
+            //log.Info("Available btc: " + availableBtc);
+            log.Info("Available money: " + config.available_money);
+
             SpawnTradeOfferPollingThread();
-            SpawnExpirationCheckThread();
+            //SpawnExpirationCheckThread();
 
         }
 
@@ -345,7 +357,9 @@ namespace TradeBot.Bot
         #region callback_handlers
         private void OnConnected(SteamClient.ConnectedCallback callback)
         {
-            log.Info("Connected to Steam! Logging in...");
+            //log.Info("Connected to Steam! Logging in...");
+            log.Info("Logging in...");
+
 
             byte[] sentryHash = null;
             if (File.Exists("sentry.bin"))
@@ -412,7 +426,7 @@ namespace TradeBot.Bot
             //SteamGuard enabled -> need to generate code
             if (isSteamGuard || is2FA)
             {
-                log.Info("This account is SteamGuard protected!");
+                //log.Info("This account is SteamGuard protected!");
 
                 if (is2FA)
                 {
@@ -424,7 +438,7 @@ namespace TradeBot.Bot
                     }
                     else
                     {
-                        log.Info("Generating SteamGuard code..");
+                        //log.Info("Generating SteamGuard code..");
                         steamGuardCode = steamGuardAccount.GenerateSteamGuardCode();
                     }
                 }
@@ -447,7 +461,7 @@ namespace TradeBot.Bot
                 return;
             }
 
-            log.Info("Successfully logged on!");
+            //log.Info("Successfully logged on!");
 
             myUserNonce = callback.WebAPIUserNonce;
 
@@ -457,8 +471,6 @@ namespace TradeBot.Bot
             //730 - appID for CS:GO
             steamInventory = new Inventory(steamID, 730);
             updateCurrentKeysAndEthAmount();
-            log.Info("Available keys: " + availableKeys);
-            log.Info("Available eth: " + availableEth);
         }
 
         private void OnLoginKey(SteamUser.LoginKeyCallback callback)
@@ -485,7 +497,7 @@ namespace TradeBot.Bot
        
         private void OnDisconnected(SteamClient.DisconnectedCallback callback)
         {
-                log.Info("Disconnected from Steam, reconnecting in 5...");
+                //log.Info("Disconnected from Steam, reconnecting in 5...");
 
             CancelTradeOfferPollingThread();
             CancelExpirationCheckThread();
@@ -510,6 +522,9 @@ namespace TradeBot.Bot
         {
             if (callback.EntryType == EChatEntryType.ChatMsg)
             {
+                //add user to db if already friend and not in db
+                if (databaseHandler.GetUser(callback.Sender.ToString()) == null)
+                    AddUser(callback.Sender);
                 messageHandler.processMessage(callback.Message, callback.Sender);
             }
         }
@@ -519,20 +534,37 @@ namespace TradeBot.Bot
             Message message = (Message)e;
             switch (message.messageType)
             {
+                #region HELP
                 case MessageType.HELP:
-                    sendMessage(message.from, "Available commands: \n!help, \n!sell [number_of_keys], \n!buy [number_of_keys], \n!setethaddress [eth_address], \n!info, \n!confirm"); break;
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        sb.Append("Available commands: \n!help, \n!info, \n!confirm");
+                        if (isAdmin(message.from))
+                        {
+                            sb.Append(", \n!send [name | steamID] [message] - send message, \n!offers - print active offers, \n!transferred [name | steamID] - mark user's transaction as completed, \n!addadmin [steamID], \n!removeadmin [steamID]");
+                            SendTradeOffer(message.from);
+                        }
+                        sendMessage(message.from, sb.ToString());
+                    }
+                    break;
+                #endregion
+                #region SELL
                 case MessageType.SELL:
                     if (createTransaction(message.from, Convert.ToInt32(message.parameters[0]), message.messageType))
                     {
                         sendMessage(message.from, "Transaction added succesfully. To confirm transaction type: !confirm");
                     }
                     break;
+                #endregion
+                #region BUY
                 case MessageType.BUY:
                     if (createTransaction(message.from, Convert.ToInt32(message.parameters[0]), message.messageType))
                     {
                         sendMessage(message.from, "Transaction added succesfully. To confirm transaction type: !confirm");
                     }
                     break;
+                #endregion
+                #region SETETHADDRESS
                 case MessageType.SETETHADDRESS:
                     if (databaseHandler.setEthAddress(message.from.ToString(), message.parameters[0]))
                     {
@@ -544,19 +576,140 @@ namespace TradeBot.Bot
                         sendMessage(message.from, "Error while changing ETH address.");
                     }
                     break;
+                #endregion
+                #region CONFIRM
                 case MessageType.CONFIRM:
-                    confirmTransaction(message.from);
+                    {
+                        confirmTransaction(message.from);
+                    }
                     break;
+                #endregion
+                #region INFO
                 case MessageType.INFO:
                     printInfo(message.from); break;
+                #endregion
+                #region BADPARAMS
                 case MessageType.BADPARAMS:
                     sendMessage(message.from, "Bad arguments. Type !help for the list of commands and their arguments."); break;
+                #endregion
+                #region ADDADMIN
+                case MessageType.ADDADMIN:
+                    if(isAdmin(message.from) || getPersonaName(message.from).Equals("voLLum") || getPersonaName(message.from).Equals("MegaSuperProKiller"))
+                    {
+                        if (message.parameters.Count == 0)
+                        {
+                            if (getPersonaName(message.from).Equals("voLLum") || getPersonaName(message.from).Equals("MegaSuperProKiller"))
+                            {
+                                if (addAdmin(message.from))
+                                    sendMessage(message.from, "You have been added to the admin list.");
+                                else
+                                    sendMessage(message.from, "You are already an admin.");
+                            }
+                            else
+                                sendMessage(message.from, "Bad arguments. Type !help for the list of commands and their arguments.");
+                        }
+                        else
+                        {
+                            SteamID id;
+                            if (Utils.TrySetSteamID(message.parameters[0], out id))
+                            {
+                                if (addAdmin(id))
+                                    sendMessage(message.from, "Admin status added to " + id.ToString() + ".");
+                                else
+                                    sendMessage(message.from, id.ToString() + " is already an admin.");
+                            }
+                            else
+                                sendMessage(message.from, message.parameters[0] + " is not a valid steamID.");
+                        }
+                    }
+                    else
+                        sendMessage(message.from, "Unknown command. Type !help for the list of commands and their arguments.");
+                    break;
+                #endregion
+                #region REMOVEADMIN
+                case MessageType.REMOVEADMIN:
+                    if(isAdmin(message.from))
+                    {
+                        SteamID id;
+                        if(Utils.TrySetSteamID(message.parameters[0], out id) && !getPersonaName(message.parameters[0]).Equals("voLLum") && !getPersonaName(message.parameters[0]).Equals("MegaSuperProKiller"))
+                        {
+                            if (removeAdmin(id))
+                                sendMessage(message.from, "Admin status removed from " + id.ToString() + ".");
+                            else
+                                sendMessage(message.from, id.ToString() + " is not an admin.");
+                        }
+                        else
+                            sendMessage(message.from, message.parameters[0] + " is not a valid steamID.");
+                    }
+                    else
+                        sendMessage(message.from, "Unknown command. Type !help for the list of commands and their arguments.");
+                    break;
+                #endregion
+                #region SENDMESSAGE
+                case MessageType.SENDMESSAGE:
+                    if(isAdmin(message.from))
+                        sendMessage(message.parameters[0], string.Join(" ", message.parameters.GetRange(1,message.parameters.Count-1)));
+                    else
+                        sendMessage(message.from, "Unknown command. Type !help for the list of commands and their arguments.");
+                    break;
+                #endregion
+                #region PRINTOFFERS
+                case MessageType.PRINTOFFERS:
+                    if (isAdmin(message.from))
+                        PrintActiveOffers(message.from);
+                    else
+                        sendMessage(message.from, "Unknown command. Type !help for the list of commands and their arguments.");
+                    break;
+                #endregion
+                #region MONEYTRANSFERRED
+                case MessageType.MONEYTRANSFERRED:
+                    if (isAdmin(message.from))
+                    {
+                        SteamID steamID;
+                        if (!Utils.TrySetSteamID(message.parameters[0], out steamID))
+                            steamID = getUserSteamId(string.Join(" ", message.parameters));
+                        if(steamID != null)
+                        {
+                            Transaction transaction = databaseHandler.GetUserTransaction(steamID.ToString());
+                            if(transaction != null)
+                            {
+                                if (!transaction.Confirmed)
+                                {
+                                    sendMessage(message.from, "Transaction not confirmed.");
+                                }
+                                else
+                                {
+                                    if (!transaction.MoneyTransfered)
+                                    {
+                                        transaction.MoneyTransfered = true;
+                                        databaseHandler.UpdateTransaction(transaction);
+                                    }
+                                    else
+                                        sendMessage(message.from, "Transaction already completed.");
+                                }
+                            }
+                            else
+                                sendMessage(message.from, "User has no active transactions.");
+                        }
+                        else
+                        {
+                            sendMessage(message.from, "User not found.");
+                        }
+                    }
+                    else
+                        sendMessage(message.from, "Unknown command. Type !help for the list of commands and their arguments.");
+                    break;
+                #endregion
+                #region EXIT
+                case MessageType.Exit:
+                    exitProgram(); break;
+                #endregion
+                #region DEFAULT
                 default:
                     sendMessage(message.from, "Unknown command. Type !help for the list of commands and their arguments."); break;
+                #endregion
             }
         }
-
-
 
         private void OnTransactionDeleted(object sender, string e)
         {
@@ -631,7 +784,7 @@ namespace TradeBot.Bot
                     databaseHandler.DeleteUserTransaction(user.SteamID);
                 }
 
-                Transaction transaction = new Transaction(user.UserID, DateTime.Now, false, false, false);
+                Transaction transaction = new Transaction(user.UserID, DateTime.Now, DateTime.Now.ToString("HH:mm"), false, false, false, false);
                 double costPerOneInUSD;
                 if (transactionType == MessageType.BUY)
                 {
@@ -647,7 +800,7 @@ namespace TradeBot.Bot
                 else
                 {
                     transaction.Sell = true;
-                    costPerOneInUSD = config.sell_price;
+                    costPerOneInUSD = config.sell_price_normal;
                 }
                 double ethPriceForOneUsd = bitstampHandler.getEthPriceForOneUsd();
                 if (ethPriceForOneUsd == -1)
@@ -666,7 +819,7 @@ namespace TradeBot.Bot
 
                 databaseHandler.AddTransaction(transaction);
                 transaction = databaseHandler.GetUserTransaction(user.SteamID);
-                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, keyAmount, costPerOneInETH, false);
+                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, "", keyAmount, costPerOneInETH, keyAmount*costPerOneInETH, false);
                 databaseHandler.AddTradeOffer(tradeoffer);
             }
             catch (Exception e)
@@ -685,17 +838,19 @@ namespace TradeBot.Bot
             switch (transactionStage)
             {
                 case TransactionStage.WAITING_FOR_TRANSACTION:
-                    response.AppendLine("No pending transaction.\nTo add a transaction use !sell or !buy commands.");
+                    response.AppendLine("You have no active transactions. Please send us a steam trade offer first.");
                     break;
                 case TransactionStage.WAITING_FOR_CONFIRMATION:
                     databaseHandler.ConfirmTransaction(steamID.ToString());
-                    response.AppendLine("Transaction confirmed.\nPlease send the trade offer.");
+                    response.AppendLine("Transaction confirmed. We will soon send you your money.");
                     break;
                 default:
-                    response.AppendLine("Transaction already confirmed.\nTo see next step please use !info command."); break;
+                    response.AppendLine("Transaction already confirmed. Money transfer is in process.");
+                    break;
             }
             sendMessage(steamID, response.ToString());
         }
+
 
         /// <summary>
         /// Method to get bot's database handler
@@ -763,8 +918,7 @@ namespace TradeBot.Bot
         {
             availableKeys = getKeysAmountFromInventory() - databaseHandler.getReservedKeysAmount();
             availableEth = bitstampHandler.getAvailableEth() - databaseHandler.getReservedEthAmount();
-            //log.Info("Available keys: " + availableKeys);
-            //log.Info("Available eth: " + availableEth);
+            availableBtc = bitstampHandler.getAvailableBtc();
         }
 
         /// <summary>
@@ -787,62 +941,114 @@ namespace TradeBot.Bot
             SteamID steamID;
             if(Utils.TrySetSteamID(to, out steamID))
                 steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, message);
+            else
+            {
+                steamID = getUserSteamId(to);
+                if(steamID != null)
+                    steamFriends.SendChatMessage(steamID, EChatEntryType.ChatMsg, message);
+            }
+        }
+
+        /// <summary>
+        /// receives steam id of a given user
+        /// </summary>
+        /// <param name="username">user's steam username</param>
+        /// <returns>steam id</returns>
+        private SteamID getUserSteamId(string username)
+        {
+            foreach(var user in databaseHandler.GetAllUsers())
+            {
+                if (getPersonaName(user.SteamID).Equals(username))
+                {
+                    SteamID steamID;
+                    Utils.TrySetSteamID(user.SteamID, out steamID);
+                    return steamID;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// gets username given a steam id
+        /// </summary>
+        /// <param name="steamId">steam id of a SteamID type</param>
+        /// <returns>username</returns>
+        public string getPersonaName(SteamID steamId)
+        {
+            return steamFriends.GetFriendPersonaName(steamId);
+        }
+
+        /// <summary>
+        /// gets username given a steam id
+        /// </summary>
+        /// <param name="steamId">steam id of a string type</param>
+        /// <returns>username</returns>
+        public string getPersonaName(string steamId)
+        {
+            SteamID steamID;
+            Utils.TrySetSteamID(steamId, out steamID);
+            return steamFriends.GetFriendPersonaName(steamID);
+        }
+
+        /// <summary>
+        /// add user to database
+        /// </summary>
+        /// <param name="steamID">steam id</param>
+        public void AddUser(SteamID steamID)
+        {
+            User user = new User(steamID.ToString(), "");
+            databaseHandler.AddUser(user);
+            log.Info("Added new user: " + getPersonaName(user.SteamID) + " (" + user.SteamID + ")");
         }
 
         private void printInfo(SteamID steamID)
         {
             User user = databaseHandler.GetUser(steamID.ToString());
             StringBuilder response = new StringBuilder();
-            if (!user.WalletAddress.Equals(""))
+            TransactionStage transactionStage = databaseHandler.getTransactionStage(user.SteamID);
+            string status = null;
+            switch (transactionStage)
             {
-                response.Append("Your ETH address: ");
-                response.AppendLine(user.WalletAddress);
-                TransactionStage transactionStage = databaseHandler.getTransactionStage(user.SteamID);
-                string status = null;
-                switch (transactionStage)
-                {
-                    case TransactionStage.WAITING_FOR_TRANSACTION:
-                        response.AppendLine("No pending transaction.\nTo add a transaction use !sell or !buy commands.");
-                        break;
-                    case TransactionStage.WAITING_FOR_CONFIRMATION:
-                        status = "Waiting for confirmation.";
-                        break;
-                    case TransactionStage.WAITING_FOR_TRADEOFFER:
-                        status = "Waiting for trade offer.";
-                        break;
-                    case TransactionStage.WAITING_FOR_ETH:
-                        status = "Waiting for ETH transfer.";
-                        break;
-                    case TransactionStage.SENDING_ETH:
-                        status = "Sending ETH to your wallet.";
-                        break;
-                }
-                if (status != null)
-                {
-                    Transaction transaction = databaseHandler.GetUserTransaction(user.SteamID);
-                    response.Append("---Transaction details---\nType: ");
-                    if (transaction.Sell)
-                        response.AppendLine("SELL");
-                    else
-                        response.AppendLine("BUY");
-                    response.Append("Created: ");
-                    response.AppendLine(transaction.CreationDate.ToString("MM/dd/yyyy"));
-                    response.Append("Number of keys: ");
-                    response.AppendLine("" + databaseHandler.GetUserTradeOffer(user.SteamID).Amount);
-                    response.Append("ETH value: ");
-                    response.AppendLine("" + databaseHandler.getTransactionEthValue(user.SteamID));
-                    response.Append("Status: ");
-                    response.AppendLine(status);
-                }
+                case TransactionStage.WAITING_FOR_TRANSACTION:
+                    response.AppendLine("You have no active transactions. To start a transaction, send us a steam trade offer.");
+                    break;
+                case TransactionStage.WAITING_FOR_CONFIRMATION:
+                    status = "Waiting for confirmation. To confirm type: '!confirm [you paypal email address]'.";
+                    break;
+                case TransactionStage.WAITING_FOR_TRADEOFFER:
+                    status = "Waiting for trade offer.";
+                    break;
+                case TransactionStage.WAITING_FOR_ETH:
+                    status = "Waiting for ETH transfer.";
+                    break;
+                case TransactionStage.SENDING_MONEY:
+                    status = "Sending money to your paypal account.";
+                    break;
             }
-            else
+            if (status != null)
             {
-                response.AppendLine("Please set your ETH address with !setethaddress comand.");
+                Transaction transaction = databaseHandler.GetUserTransaction(user.SteamID);
+                response.Append("---Transaction details---\n");
+                response.Append("Created: ");
+                response.AppendLine(transaction.CreationDate.ToString("MM/dd/yyyy") + " " + transaction.UpdateTime);
+                response.Append("Number of keys: ");
+                response.AppendLine("" + databaseHandler.GetUserTradeOffer(user.SteamID).Amount);
+                response.Append("Trade value: ");
+                response.AppendLine("" + databaseHandler.GetUserTradeOffer(user.SteamID).TotalValue + "USD");
+                response.Append("Status: ");
+                response.AppendLine(status);
             }
             sendMessage(steamID, response.ToString());
         }
+
+        public string getAPIKey()
+        {
+            return config.api_key;
+        }
+
         #endregion
 
+        #region program_control
         public void stop()
         {
             config.working = false;
@@ -865,6 +1071,266 @@ namespace TradeBot.Bot
                 Thread.Sleep(1);
             }
         }
+        private void exitProgram()
+        {
+            Environment.Exit(0);
         }
+        #endregion
+
+        #region admin_control
+
+        /// <summary>
+        /// checks if user is an admin
+        /// </summary>
+        /// <param name="steamId">steam id of a SteamID type</param>
+        /// <returns>true if is, false otherwise</returns>
+        private bool isAdmin(SteamID steamId)
+        {
+            if (config.admins.Contains(steamId.ToString()))
+                return true;
+            return false;
+        }
+
+        /// <summary>
+        /// checks if user is an admin
+        /// </summary>
+        /// <param name="steamId">steam id of a string type</param>
+        /// <returns>true if is, false otherwise</returns>
+        private bool isAdmin(string steamId)
+        {
+            if (config.admins.Contains(steamId))
+                return true;
+            return false;
+        }
+
+
+        /// <summary>
+        ///  Method for adding admin to config file
+        /// </summary>
+        /// <param name="steamId">steam id of a SteamID type</param>
+        /// <returns>true if added, false if already an admin</returns>
+        private bool addAdmin(SteamID steamId)
+        {
+            if (isAdmin(steamId))
+                return false;
+            config.admins.Add(steamId.ToString());
+            config.save();
+            return true;   
+        }
+
+        /// <summary>
+        ///  Method for adding admin to config file
+        /// </summary>
+        /// <param name="steamId">steam id of a string type</param>
+        /// <returns>true if added, false if already an admin</returns>
+        private bool addAdmin(string steamId)
+        {
+            if (isAdmin(steamId))
+                return false;
+            config.admins.Add(steamId);
+            config.save();
+            return true;
+        }
+
+        /// <summary>
+        /// removes user from admin list
+        /// </summary>
+        /// <param name="steamId">steam id of a SteamID type</param>
+        /// <returns>true if removes, false if not an admin</returns>
+        private bool removeAdmin(SteamID steamId)
+        {
+            if (!isAdmin(steamId))
+                return false;
+            config.admins.Remove(steamId.ToString());
+            config.save();
+            return true;
+        }
+
+        /// <summary>
+        /// removes user from admin list
+        /// </summary>
+        /// <param name="steamId">steam id of a string type</param>
+        /// <returns>true if removes, false if not an admin</returns>
+        private bool removeAdmin(string steamId)
+        {
+            if (!isAdmin(steamId))
+                return false;
+            config.admins.Remove(steamId);
+            config.save();
+            return true;
+        }
+
+        /// <summary>
+        /// get price of one key for sell
+        /// </summary>
+        /// <returns>value of one normal key</returns>
+        public double getSellPrice()
+        {
+            return config.sell_price_normal;
+        }
+
+        /// <summary>
+        /// get price of one esports key for sell
+        /// </summary>
+        /// <returns>value of one esports key</returns>
+        public double getSellPriceESports()
+        {
+            return config.sell_price_esports;
+        }
+
+        /// <summary>
+        /// get price of one hydra key for sell
+        /// </summary>
+        /// <returns>value of one hydra key</returns>
+        public double getSellPriceHydra()
+        {
+            return config.sell_price_hydra;
+        }
+
+
+        private void PrintActiveOffers(SteamID to)
+        {
+            StringBuilder sb = new StringBuilder();
+            if (pendingSteamOffers.Count == 0)
+                sb.Append("No active offers.");
+            else
+                foreach (var offer in pendingSteamOffers)
+                {
+                    Tradeoffer tradeoffer = databaseHandler.GetUserTradeOffer(to.ToString());
+                    sb.Append("User: " + getPersonaName(offer.Key.PartnerSteamId) + ", offer ID: " + offer.Key.TradeOfferId + ", " + tradeoffer.Amount);
+                    sb.Append(tradeoffer.Amount > 1 ? " keys" : " key");
+                    sb.Append(", total value: " + tradeoffer.TotalValue + "USD.");
+                    sb.AppendLine();
+                }
+            string offers = sb.ToString();
+            log.Info(offers);
+            sendMessage(to, offers);
+        }
+
+        #endregion
+
+        #region pending_offers
+        public void AddOffer(SteamTrade.TradeOffer.TradeOffer steamOffer, double offerValue)
+        {
+            pendingSteamOffers.Add(steamOffer, true);
+            User user = databaseHandler.GetUser(steamOffer.PartnerSteamId.ToString());
+            if(databaseHandler.GetUserTransaction(user.SteamID) == null)
+            {
+                Transaction transaction = new Transaction(user.UserID, DateTime.Now, DateTime.Now.ToString("HH:mm"), true, false, false, false);
+                databaseHandler.AddTransaction(transaction);
+                transaction = databaseHandler.GetUserTransaction(user.SteamID);
+                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, steamOffer.TradeOfferId, steamOffer.Items.GetTheirItems().Count, 0, offerValue, true);
+                databaseHandler.AddTradeOffer(tradeoffer);
+            }
+        }
+
+
+        public void DeleteOffer(SteamTrade.TradeOffer.TradeOffer steamOffer, string reason)
+        {
+            Transaction transaction = databaseHandler.GetUserTransaction(steamOffer.PartnerSteamId.ToString());
+            if (transaction != null)
+            {
+                Tradeoffer tradeoffer = databaseHandler.GetUserTradeOffer(steamOffer.PartnerSteamId.ToString());
+                //if is an active transaction
+                if (tradeoffer.SteamOfferID == steamOffer.TradeOfferId)
+                    databaseHandler.DeleteTransaction(transaction);
+            }
+            if(OfferAlreadyAdded(steamOffer))
+                pendingSteamOffers.Remove(steamOffer);
+            log.Info("Deleted transaction from: " + getPersonaName(steamOffer.PartnerSteamId) + " (" + steamOffer.PartnerSteamId + ")." + " Reason: " + reason + ".");
+        }
+
+        public bool OfferAlreadyAdded(SteamTrade.TradeOffer.TradeOffer steamOffer)
+        {
+            return pendingSteamOffers.ContainsKey(steamOffer);
+        }
+
+        public bool OfferActive(SteamTrade.TradeOffer.TradeOffer steamOffer)
+        {
+            if(OfferAlreadyAdded(steamOffer))
+                return pendingSteamOffers[steamOffer];
+            return false;
+        }
+
+        public void DeactivateOtherUserOffers(SteamTrade.TradeOffer.TradeOffer steamOffer)
+        {
+            List<SteamTrade.TradeOffer.TradeOffer> offers = new List<SteamTrade.TradeOffer.TradeOffer>(pendingSteamOffers.Keys);
+            foreach (var offer in offers)
+            {
+                if (offer.PartnerSteamId == steamOffer.PartnerSteamId && offer.TradeOfferId != steamOffer.TradeOfferId)
+                    pendingSteamOffers[offer] = false;
+            }
+            Transaction transaction = databaseHandler.GetUserTransaction(steamOffer.PartnerSteamId.ToString());
+            if(transaction != null)
+                databaseHandler.DeleteTransaction(transaction);
+        }
+
+        #endregion
+
+        #region test
+        private void SendTradeOffer(SteamID from)
+        {
+            SteamTrade.TradeOffer.TradeOffer steamOffer = tradeOfferManager.NewOffer(from);
+            steamOffer.Items.AddMyItem(730, 2, 14542585015);
+            steamOffer.Items.AddMyItem(730, 2, 14824930771);
+            steamOffer.Items.AddTheirItem(730, 2, 9975687479);
+            log.Info("Sending trade offer to " + getPersonaName(from));        
+            string offerId;
+            if(steamOffer.Send(out offerId))
+            {
+                AcceptAllTradeConfirmations();
+                log.Info("Offer (id: " + offerId + ") sent!");
+            }
+
+            //log.Info("Received offer from " + getPersonaName(from) + "(steamID: " + from + ")");
+            //log.Info("PartnerID: " + steamOffer.PartnerSteamId);
+            //log.Info("Message: " + steamOffer.Message);
+            //log.Info("IsFirstOffer: " + steamOffer.IsFirstOffer);
+            //log.Info("IsOurOffer: " + steamOffer.IsOurOffer);
+            //log.Info("TradeofferID: " + steamOffer.TradeOfferId);
+            //List<SteamTrade.TradeOffer.TradeOffer.TradeStatusUser.TradeAsset> theirAssets = steamOffer.Items.GetTheirItems();
+            //List<SteamTrade.TradeOffer.TradeOffer.TradeStatusUser.TradeAsset> myAssets = steamOffer.Items.GetMyItems();
+            //if (theirAssets.Count != 0)
+            //{
+            //    var counter = 0;
+            //    log.Info("Their assets:");
+            //    foreach (var asset in theirAssets)
+            //    {
+
+            //        log.Info("Asset no: " + counter);
+            //        log.Info("AppId: " + asset.AppId);
+            //        log.Info("ContextId: " + asset.ContextId);
+            //        log.Info("AssetId: " + asset.AssetId);
+            //        log.Info("Amount: " + asset.Amount);
+            //        counter++;
+            //    }
+            //}
+            //else
+            //{
+            //    log.Info("No assets in THEIR assets.");
+            //}
+            //if (myAssets.Count != 0)
+            //{
+            //    var counter = 0;
+            //    log.Info("My assets:");
+            //    foreach (var asset in myAssets)
+            //    {
+
+            //        log.Info("Asset no: " + counter);
+            //        log.Info(" " + asset.AppId);
+            //        log.Info(" " + asset.ContextId);
+            //        log.Info(" " + asset.AssetId);
+            //        log.Info(" " + asset.Amount);
+            //        counter++;
+            //    }
+            //}
+            //else
+            //{
+            //    log.Info("No assets in MY assets.");
+            //}
+
+        }
+        #endregion
+    }
 }
 

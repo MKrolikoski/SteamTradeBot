@@ -82,6 +82,26 @@ namespace TradeBot.Bitstamp
         }
 
         /// <summary>
+        /// Method returns a number with available Btc on Bitstamp account.
+        /// </summary>
+        /// <returns>double value with Btc available on account</returns>
+        public double getAvailableBtc()
+        {
+            var baseUrl = "https://www.bitstamp.net/api/v2/balance/btcusd/";
+            var client = new RestClient(baseUrl);
+            RestRequest request = account.authenticator.authenticate(new RestRequest(Method.POST));
+            var response = client.Execute(request);
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                var cultureInfo = (CultureInfo)CultureInfo.InvariantCulture.Clone();
+                cultureInfo.NumberFormat.NumberDecimalSeparator = ".";
+                cultureInfo.NumberFormat.NumberGroupSeparator = ".";
+                return Convert.ToDouble(WebUtils.GetJSONAtribute(response.Content, "btc_available"), cultureInfo);
+            }
+            return -1;
+        }
+
+        /// <summary>
         /// Sends eth to specified address
         /// </summary>
         /// <param name="to">address to which eth is sent</param>
@@ -104,6 +124,35 @@ namespace TradeBot.Bitstamp
             else
             {
                 BotCore.log.Error("Eth transfer to: " + to + " failed.");
+                BotCore.log.Error("Reason: " + response.Content);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Sends btc to specified address
+        /// </summary>
+        /// <param name="to">address to which btc is sent</param>
+        /// <param name="amount">amount of btc</param>
+        /// <returns>true if transfer was successful, false otherwise</returns>
+        public bool sendBtc(string to, double amount)
+        {
+
+            var baseUrl = "https://www.bitstamp.net/api/bitcoin_withdrawal/";
+            var client = new RestClient(baseUrl);
+            RestRequest request = account.authenticator.authenticate(new RestRequest(Method.POST));
+            request.AddParameter("address", to);
+            request.AddParameter("amount", amount.ToString(CultureInfo.GetCultureInfo("en-US")));
+            request.AddParameter("instant", 0);
+            var response = client.Execute(request);
+            if (WebUtils.GetJSONAtribute(response.Content, "status") != "error")
+            {
+                BotCore.log.Info("Sent " + amount + "Btc to: " + to + ".");
+                return true;
+            }
+            else
+            {
+                BotCore.log.Error("Btc transfer to: " + to + " failed.");
                 BotCore.log.Error("Reason: " + response.Content);
                 return false;
             }
@@ -154,6 +203,43 @@ namespace TradeBot.Bitstamp
         {
             return account.getEthAddress();
         }
+
+        /// <summary>
+        /// gets btc address
+        /// </summary>
+        /// <returns>btc address</returns>
+        public string getBtcAddress()
+        {
+            return account.getBtcAddress();
+        }
+
+        //public void getBtcDepositAddress()
+        //{
+        //    var baseUrl = "https://www.bitstamp.net/api/bitcoin_deposit_address/";
+        //    var client = new RestClient(baseUrl);
+        //    RestRequest request = account.authenticator.authenticate(new RestRequest(Method.POST));
+        //    var response = client.Execute(request);
+        //    if (response.StatusCode == HttpStatusCode.OK)
+        //    {
+        //        Bot.BotCore.log.Info("Btc deposit address:\n" + response.Content);
+        //    }
+        //    else
+        //        Bot.BotCore.log.Error("Error while checking btc deposit address");
+        //}
+
+        //public void getEthDepositAddress()
+        //{
+        //    var baseUrl = "https://www.bitstamp.net/api/v2/eth_address/";
+        //    var client = new RestClient(baseUrl);
+        //    RestRequest request = account.authenticator.authenticate(new RestRequest(Method.POST));
+        //    var response = client.Execute(request);
+        //    if (response.StatusCode == HttpStatusCode.OK)
+        //    {
+        //        Bot.BotCore.log.Info("Eth deposit address:\n" + response.Content);
+        //    }
+        //    else
+        //        Bot.BotCore.log.Error("Error while checking eth deposit address");
+        //}
 
 
     }

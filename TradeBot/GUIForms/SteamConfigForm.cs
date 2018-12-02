@@ -73,7 +73,7 @@ namespace TradeBot.GUIForms
                         config.buy_price = double.Parse((string)dgv.Cells[1].Value, System.Globalization.CultureInfo.InvariantCulture);
                         break;
                     case "sell_price":
-                        config.sell_price = double.Parse((string)dgv.Cells[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+                        config.sell_price_normal = double.Parse((string)dgv.Cells[1].Value, System.Globalization.CultureInfo.InvariantCulture);
                         break;
                 }
             

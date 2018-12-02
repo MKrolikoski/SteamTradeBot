@@ -30,6 +30,6 @@
         /// <summary>
         /// user is currently sending ethereum
         /// </summary>
-        SENDING_ETH
+        SENDING_MONEY
     }
 }

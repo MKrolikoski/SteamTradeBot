@@ -31,12 +31,17 @@ namespace TradeBot.Bitstamp
         [JsonProperty("customer_id")]
         public string customer_id { get; set; }
 
-        //on bitstamp: account -> deposit -> eth
         /// <summary>
         /// Ehereum wallet address from Bistamp account.
         /// </summary>
         [JsonProperty("eth_address")]
         public string eth_address { get; set; }
+
+        /// <summary>
+        /// Bitcoin wallet address from Bistamp account.
+        /// </summary>
+        [JsonProperty("btc_address")]
+        public string btc_address { get; set; }
 
 
         /// <summary>
@@ -69,7 +74,8 @@ namespace TradeBot.Bitstamp
             sb.Append("  \"api_key\": \""+api_key+"\",\r\n");
             sb.Append("  \"api_secret\": \"" + api_secret + "\",\r\n");
             sb.Append("  \"customer_id\": \"" + customer_id + "\",\r\n");
-            sb.Append("  \"eth_address\": \"" + eth_address + "\"\r\n");
+            sb.Append("  \"eth_address\": \"" + eth_address + "\",\r\n");
+            sb.Append("  \"btc_address\": \"" + btc_address + "\"\r\n");
             sb.Append("}\r\n");
             File.WriteAllText("bitstamp_config.cfg", sb.ToString());
         }
@@ -87,7 +93,8 @@ namespace TradeBot.Bitstamp
             customer_id = Console.ReadLine();
             Console.Write("ETH address: ");
             eth_address = Console.ReadLine();
-
+            Console.Write("BTC address: ");
+            btc_address = Console.ReadLine();
         }
     }
 }

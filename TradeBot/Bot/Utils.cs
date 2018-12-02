@@ -1,4 +1,7 @@
 ﻿using SteamKit2;
+using SteamToolkit.Trading;
+using System;
+using static SteamTrade.TradeOffer.TradeOffer.TradeStatusUser;
 
 namespace TradeBot.Bot
 {
@@ -31,6 +34,20 @@ namespace TradeBot.Bot
             }
 
             return false;
+        }
+
+        public static RgInventoryItem createRgInventoryItemFromAsset(TradeAsset asset)
+        {
+            RgInventoryItem item = new RgInventoryItem();
+            item.ClassId = asset.ClassId;
+            item.Id = asset.AssetId;
+            item.InstanceId = asset.InstanceId;
+            return item;
+        }
+
+        public static string getAssetMarketName(TradeAsset asset, string apiKey)
+        {
+            return createRgInventoryItemFromAsset(asset).ToCEconAsset((uint)asset.AppId).GetMarketHashName(apiKey);
         }
     }
 }

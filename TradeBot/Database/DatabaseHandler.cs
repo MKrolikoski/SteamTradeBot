@@ -75,7 +75,8 @@ namespace TradeBot.Database
         /// <returns>true if record delete ended with success, false in other case</returns>
         public bool DeleteUserTransaction(string steamID)
         {
-            return DeleteTransaction(GetUserTransaction(steamID));
+            //return DeleteTransaction(GetUserTransaction(steamID));
+            return base.DeleteTransaction(GetUserTransaction(steamID));
         }
 
         /// <summary>
@@ -106,9 +107,9 @@ namespace TradeBot.Database
             Tradeoffer tradeoffer = GetUserTradeOffer(steamID);
             if (!tradeoffer.Accepted)
                 return TransactionStage.WAITING_FOR_TRADEOFFER;
-            if(transaction.Buy)
+            if(transaction.Buy) 
                 return TransactionStage.WAITING_FOR_ETH;
-            return TransactionStage.SENDING_ETH;
+            return TransactionStage.SENDING_MONEY;
         }
 
         /// <summary>
@@ -143,23 +144,91 @@ namespace TradeBot.Database
             return Math.Round(tradeoffer.Amount * tradeoffer.CostPerOne,8);
         }
 
+
         /// <summary>
         /// Method for deleting expired transactions
         /// </summary>
-        public void DeleteExpiredTransactions()
+        public void DeleteExpiredTransactions(Dictionary<SteamTrade.TradeOffer.TradeOffer, bool> pendingSteamOffers)
         {
-            List<Transaction> transactions = GetAllTransactions();
-            if (transactions.Count == 0)
-                return;
-            foreach(var transaction in transactions)
+            List<User> users = GetAllUsers();
+            List<User> usersWithExpiredTransactions = new List<User>();
+            var steamOffers = pendingSteamOffers.Keys;
+            foreach (var user in users)
             {
-                if ((DateTime.Now - transaction.CreationDate).Days > 0)
+                Transaction transaction = GetUserTransaction(user.SteamID);
+                if (transaction == null || transaction.Confirmed)
+                    continue;
+                var timeNow = DateTime.Now;
+                var hourMinutes = transaction.UpdateTime.Split(':');
+                int updateHour, updateMinute;
+                Int32.TryParse(hourMinutes[0], out updateHour);
+                Int32.TryParse(hourMinutes[1], out updateMinute);
+                //nie zrobiona zmiana miesiąca (np. 31.07.2018 23:59 i 01.08.2018 00:01) i roku
+                if (timeNow.Year == transaction.CreationDate.Year && timeNow.Month == transaction.CreationDate.Month && timeNow.Day == transaction.CreationDate.Day)
                 {
-                    DeleteTransaction(transaction);
+                    Bot.BotCore.log.Info("Same day");
+
+                    if (timeNow.Hour == updateHour && timeNow.Minute - updateMinute <= 5)
+                    {
+                        Bot.BotCore.log.Info("Same hour");
+                        continue;
+
+                    }
+                    else if (timeNow.Hour - updateHour == 1 && (timeNow.Minute - updateMinute >= -59 || timeNow.Minute - updateMinute <= -55))
+                        continue;
+                }
+                else if(timeNow.Year == transaction.CreationDate.Year && timeNow.Month == transaction.CreationDate.Month && timeNow.Day - transaction.CreationDate.Day == 1)
+                {
+                    Bot.BotCore.log.Info("Different day");
+
+                    if (timeNow.Hour == 0 && updateHour == 23 && (timeNow.Minute - updateMinute >= -59 || timeNow.Minute - updateMinute <= -55))
+                        continue;
+                }
+                Bot.BotCore.log.Info("Deleting");
+
+                usersWithExpiredTransactions.Add(user);
+                DeleteTransaction(transaction);
+            }
+            foreach(var steamOffer in steamOffers)
+            {
+                foreach(var user in usersWithExpiredTransactions)
+                {
+                    if(steamOffer.PartnerSteamId.ToString() == user.SteamID)
+                    {
+                        pendingSteamOffers[steamOffer] = false;
+                        break;
+                    }
                 }
             }
         }
-        
+
+        /// <summary>
+        /// Method for deleting transactions if owner doesn't have an active offer
+        /// </summary>
+        public void DeleteInactiveTransactions(Dictionary<SteamTrade.TradeOffer.TradeOffer, bool> pendingSteamOffers)
+        {
+            //Bot.BotCore.log.Info("Deleting inactive");
+
+            List<string> activeUsers = new List<string>();
+            foreach(var offer in pendingSteamOffers)
+            {
+                if (offer.Value == true)
+                    activeUsers.Add(offer.Key.PartnerSteamId.ToString());
+            }
+            List<User> users = GetAllUsers();
+            foreach(var user in users)
+            {
+                if (activeUsers.Contains(user.SteamID))
+                    continue;
+                else
+                {
+                    Transaction transaction = GetUserTransaction(user.SteamID);
+                    if (transaction != null)
+                        DeleteTransaction(transaction);
+                }
+            }           
+        }
+
         /// <summary>
         /// Method for deleting specified transaction 
         /// </summary>
@@ -167,21 +236,24 @@ namespace TradeBot.Database
         /// <returns>true if transaction was successfully deleted</returns>
         public new bool DeleteTransaction(Transaction transaction)
         {
-            string eventArg;
-            if (transaction.Sell)
+            if(transaction != null)
             {
-                var ethAmount = getTransactionEthValue(transaction);
-                eventArg = "{\"ethAmount\":\"" + ethAmount + "\"}";
-            }
-            else
-            {
-                var keysAmount = GetTradeOffer(transaction).Amount;
-                eventArg = "{\"keysAmount\":\"" + keysAmount + "\"}";
-            }
-            if (base.DeleteTransaction(transaction))
-            {
-                TransactionDeletedEvent(this, eventArg);
-                return true;
+                //string eventArg;
+                //if (transaction.Sell)
+                //{
+                //    var ethAmount = getTransactionEthValue(transaction);
+                //    eventArg = "{\"ethAmount\":\"" + ethAmount + "\"}";
+                //}
+                //else
+                //{
+                //    var keysAmount = GetTradeOffer(transaction).Amount;
+                //    eventArg = "{\"keysAmount\":\"" + keysAmount + "\"}";
+                //}
+                if (base.DeleteTransaction(transaction))
+                {
+                    //TransactionDeletedEvent(this, eventArg);
+                    return true;
+                }
             }
             return false;
         }

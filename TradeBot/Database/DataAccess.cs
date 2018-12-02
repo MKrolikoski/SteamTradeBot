@@ -125,6 +125,10 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// get all transactions
+        /// </summary>
+        /// <returns>list of transactions</returns>
         public List<Transaction> GetAllTransactions()
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -178,7 +182,7 @@ namespace TradeBot.Database
                 Transaction transactionInDB = GetTransaction(transaction.TransactionID);
                 if (transactionInDB == null)
                 {
-                    connection.Query<Transaction>($"INSERT INTO Transactions(UserID, CreationDate, Sell,Buy,Confirmed) VALUES ('{transaction.UserID}','{transaction.CreationDate.ToString("yyyy-MM-dd HH:mm")}',{transaction.Sell.ToString()},{transaction.Buy.ToString()},{transaction.Confirmed.ToString()})");
+                    connection.Query<Transaction>($"INSERT INTO Transactions(UserID, CreationDate, Sell,Buy,Confirmed, MoneyTransfered, UpdateTime) VALUES ('{transaction.UserID}','{transaction.CreationDate.ToString("yyyy-MM-dd HH:mm")}',{transaction.Sell.ToString()},{transaction.Buy.ToString()},{transaction.Confirmed.ToString()},{transaction.MoneyTransfered.ToString()}, '{transaction.UpdateTime}')");
                     return true;
                 }
                 else
@@ -201,7 +205,7 @@ namespace TradeBot.Database
                 Transaction transactionInDB = GetTransaction(transaction.TransactionID);
                 if (transactionInDB != null)
                 {
-                    connection.Query<Transaction>($"UPDATE Transactions SET CreationDate='{transaction.CreationDate.ToString("yyyy-MM-dd")}', Sell={transaction.Sell.ToString()},Buy={transaction.Buy.ToString()},Confirmed={transaction.Confirmed.ToString()} WHERE TransactionID='{transaction.TransactionID}'");
+                    connection.Query<Transaction>($"UPDATE Transactions SET CreationDate='{transaction.CreationDate.ToString("yyyy-MM-dd")}', Sell={transaction.Sell.ToString()},Buy={transaction.Buy.ToString()},Confirmed={transaction.Confirmed.ToString()},MoneyTransfered={transaction.MoneyTransfered.ToString()},UpdateTime='{transaction.UpdateTime}' WHERE TransactionID='{transaction.TransactionID}'");
                     return true;
                 }
                 else
@@ -230,6 +234,10 @@ namespace TradeBot.Database
             }
         }
 
+        /// <summary>
+        /// get all trade offers
+        /// </summary>
+        /// <returns>list of trade offers</returns>
         public List<Tradeoffer> GetAllTradeOffers()
         {
             using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
@@ -285,7 +293,7 @@ namespace TradeBot.Database
                 {
                     try
                     {
-                        return connection.Query<Tradeoffer>($"select TradeOfferID, Amount, CostPerOne, Accepted from Users natural join Transactions natural join TradeOffers WHERE Users.UserID='{user.UserID}'").Single();
+                        return connection.Query<Tradeoffer>($"select TradeOfferID, Amount, CostPerOne, Accepted, SteamOfferID, TotalValue from Users natural join Transactions natural join TradeOffers WHERE Users.UserID='{user.UserID}'").Single();
                     }
                     catch (InvalidOperationException)
                     {
@@ -312,7 +320,7 @@ namespace TradeBot.Database
                 Tradeoffer tradeOfferInDB = GetTradeOffer(tradeoffer.TradeofferID);
                 if (tradeOfferInDB == null)
                 {
-                    connection.Query<Tradeoffer>($"INSERT INTO TradeOffers(TransactionID, Amount,CostPerOne, Accepted) VALUES ('{tradeoffer.TransactionID}','{tradeoffer.Amount}',{tradeoffer.CostPerOne.ToString(CultureInfo.GetCultureInfo("en-US"))}, {tradeoffer.Accepted.ToString()})");
+                    connection.Query<Tradeoffer>($"INSERT INTO TradeOffers(TransactionID, SteamOfferID, Amount,CostPerOne, Accepted, TotalValue) VALUES ('{tradeoffer.TransactionID}','{tradeoffer.SteamOfferID}','{tradeoffer.Amount}',{tradeoffer.CostPerOne.ToString(CultureInfo.GetCultureInfo("en-US"))}, {tradeoffer.Accepted.ToString()}, {tradeoffer.TotalValue.ToString(CultureInfo.GetCultureInfo("en-US"))})");
                     return true;
                 }
                 else

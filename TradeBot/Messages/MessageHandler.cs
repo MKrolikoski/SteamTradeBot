@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TradeBot.Bot;
 
 namespace TradeBot.Messages
 {
@@ -62,11 +63,17 @@ namespace TradeBot.Messages
                 switch (command)
                 {
                     case "!help": messageType = MessageType.HELP; break;
-                    case "!sell": messageType = MessageType.SELL; break;
-                    case "!buy": messageType = MessageType.BUY; break;
-                    case "!setethaddress": messageType = MessageType.SETETHADDRESS; break;
+                    //case "!sell": messageType = MessageType.SELL; break;
+                    //case "!buy": messageType = MessageType.BUY; break;
+                    //case "!setethaddress": messageType = MessageType.SETETHADDRESS; break;
                     case "!confirm": messageType = MessageType.CONFIRM; break;
                     case "!info": messageType = MessageType.INFO; break;
+                    case "!addadmin": messageType = MessageType.ADDADMIN; break;
+                    case "!removeadmin": messageType = MessageType.REMOVEADMIN; break;
+                    case "!send": messageType = MessageType.SENDMESSAGE; break;
+                    case "!offers": messageType = MessageType.PRINTOFFERS; break;
+                    case "!transferred": messageType = MessageType.MONEYTRANSFERRED; break;
+                    case "!exit": messageType = MessageType.Exit; break;
                     default: parameters = new List<string>();  messageType = MessageType.UNKNOWN; break;
                 }
                 if (!checkParams(messageType, parameters))
@@ -111,6 +118,22 @@ namespace TradeBot.Messages
                         return true;
                     break;
                 case MessageType.SETETHADDRESS:
+                    if (parameters.Count == 1)
+                        return true;
+                    break;
+                case MessageType.SENDMESSAGE:
+                    if (parameters.Count >= 2)
+                        return true;
+                    break;
+                case MessageType.MONEYTRANSFERRED:
+                    if (parameters.Count >= 1)
+                        return true;
+                    break;
+                case MessageType.ADDADMIN:
+                    if (parameters.Count <= 1)
+                        return true;
+                    break;
+                case MessageType.REMOVEADMIN:
                     if (parameters.Count == 1)
                         return true;
                     break;
