@@ -27,24 +27,25 @@ namespace TradeBot.Entity
         public string SteamOfferID { get; set; }
 
         /// <summary>
+        /// app id
+        /// </summary>
+        public int AppId { get; set; }
+
+        /// <summary>
+        /// context id
+        /// </summary>
+        public int ContextId { get; set; }
+
+        /// <summary>
+        /// Asset Id
+        /// </summary>
+        public long AssetId { get; set; }
+
+        /// <summary>
         /// Number of keys that user offers.
         /// </summary>
         public int Amount { get; set; }
 
-        /// <summary>
-        /// Cost in USD for each key.
-        /// </summary>
-        public double CostPerOne { get; set; }
-
-        /// <summary>
-        /// Total cost of steam offer
-        /// </summary>
-        public double TotalValue { get; set; }
-
-        /// <summary>
-        /// Field store information about offer acceptance.
-        /// </summary>
-        public bool Accepted { get; set; }
 
         /// <summary>
         /// Default constructor. It is used by library that handle connection with database
@@ -56,18 +57,18 @@ namespace TradeBot.Entity
         /// </summary>
         /// <param name="TransactionID"> transaction id</param>
         /// <param name="SteamOfferID"> steam offer id</param>
+        /// <param name="AppId">cost in USD</param>
+        /// <param name="ContextId">total value of an offer</param>
+        /// <param name="AssetId">information about offer status</param>
         /// <param name="Amount"> number of keys</param>
-        /// <param name="CostPerOne">cost in USD</param>
-        /// <param name="TotalValue">total value of an offer</param>
-        /// <param name="Accepted">information about offer status</param>
-        public Tradeoffer(int TransactionID, string SteamOfferID, int Amount, double CostPerOne, double TotalValue, bool Accepted)
+        public Tradeoffer(int TransactionID, string SteamOfferID, int AppId, int ContextId, long AssetId, int Amount)
         {
             this.TransactionID = TransactionID;
             this.SteamOfferID = SteamOfferID;
+            this.AppId = AppId;
+            this.ContextId = ContextId;
+            this.AssetId = AssetId;
             this.Amount = Amount;
-            this.CostPerOne = CostPerOne;
-            this.TotalValue = TotalValue;
-            this.Accepted = Accepted;
         }
     }
 }

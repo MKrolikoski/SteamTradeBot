@@ -308,7 +308,7 @@ namespace TradeBot.Bot
             //log.Info("Available keys: " + availableKeys);
             //log.Info("Available eth: " + availableEth);
             //log.Info("Available btc: " + availableBtc);
-            log.Info("Available money: " + config.available_money);
+            //log.Info("Available money: " + config.available_money);
 
             SpawnTradeOfferPollingThread();
             //SpawnExpirationCheckThread();
@@ -538,13 +538,27 @@ namespace TradeBot.Bot
                 case MessageType.HELP:
                     {
                         StringBuilder sb = new StringBuilder();
-                        sb.Append("Available commands: \n!help, \n!info, \n!confirm");
+                        sb.Append("Available commands: \n!help, \n!info, \n!confirm. \n!createdefaulttransaction, \n!send");
                         if (isAdmin(message.from))
                         {
-                            sb.Append(", \n!send [name | steamID] [message] - send message, \n!offers - print active offers, \n!transferred [name | steamID] - mark user's transaction as completed, \n!addadmin [steamID], \n!removeadmin [steamID]");
-                            SendTradeOffer(message.from);
+                            //sb.Append(", \n!send [name | steamID] [message] - send message, \n!offers - print active offers, \n!transferred [name | steamID] - mark user's transaction as completed, \n!addadmin [steamID], \n!removeadmin [steamID]");
+                            //SendTradeOffer(message.from);
                         }
                         sendMessage(message.from, sb.ToString());
+                    }
+                    break;
+                #endregion
+                #region Send
+                case MessageType.Send:
+                    {
+                        SendTradeOffer(message.from);
+                    }
+                    break;
+                #endregion
+                #region CreateDefaultTransaction
+                case MessageType.CreateDefaultTransaction:
+                    {
+                        CreateDefaultTransaction(message.from);
                     }
                     break;
                 #endregion
@@ -661,45 +675,6 @@ namespace TradeBot.Bot
                         sendMessage(message.from, "Unknown command. Type !help for the list of commands and their arguments.");
                     break;
                 #endregion
-                #region MONEYTRANSFERRED
-                case MessageType.MONEYTRANSFERRED:
-                    if (isAdmin(message.from))
-                    {
-                        SteamID steamID;
-                        if (!Utils.TrySetSteamID(message.parameters[0], out steamID))
-                            steamID = getUserSteamId(string.Join(" ", message.parameters));
-                        if(steamID != null)
-                        {
-                            Transaction transaction = databaseHandler.GetUserTransaction(steamID.ToString());
-                            if(transaction != null)
-                            {
-                                if (!transaction.Confirmed)
-                                {
-                                    sendMessage(message.from, "Transaction not confirmed.");
-                                }
-                                else
-                                {
-                                    if (!transaction.MoneyTransfered)
-                                    {
-                                        transaction.MoneyTransfered = true;
-                                        databaseHandler.UpdateTransaction(transaction);
-                                    }
-                                    else
-                                        sendMessage(message.from, "Transaction already completed.");
-                                }
-                            }
-                            else
-                                sendMessage(message.from, "User has no active transactions.");
-                        }
-                        else
-                        {
-                            sendMessage(message.from, "User not found.");
-                        }
-                    }
-                    else
-                        sendMessage(message.from, "Unknown command. Type !help for the list of commands and their arguments.");
-                    break;
-                #endregion
                 #region EXIT
                 case MessageType.Exit:
                     exitProgram(); break;
@@ -710,6 +685,7 @@ namespace TradeBot.Bot
                 #endregion
             }
         }
+
 
         private void OnTransactionDeleted(object sender, string e)
         {
@@ -784,7 +760,7 @@ namespace TradeBot.Bot
                     databaseHandler.DeleteUserTransaction(user.SteamID);
                 }
 
-                Transaction transaction = new Transaction(user.UserID, DateTime.Now, DateTime.Now.ToString("HH:mm"), false, false, false, false);
+                Transaction transaction = new Transaction(user.UserID, DateTime.Now, false, false, false);
                 double costPerOneInUSD;
                 if (transactionType == MessageType.BUY)
                 {
@@ -819,7 +795,7 @@ namespace TradeBot.Bot
 
                 databaseHandler.AddTransaction(transaction);
                 transaction = databaseHandler.GetUserTransaction(user.SteamID);
-                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, "", keyAmount, costPerOneInETH, keyAmount*costPerOneInETH, false);
+                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, "", keyAmount, 0, 0, 0);
                 databaseHandler.AddTradeOffer(tradeoffer);
             }
             catch (Exception e)
@@ -833,20 +809,23 @@ namespace TradeBot.Bot
 
         private void confirmTransaction(SteamID steamID)
         {
-            TransactionStage transactionStage = databaseHandler.getTransactionStage(steamID.ToString());
+            Transaction userTransaction = databaseHandler.GetUserTransaction(steamID.ToString());
             StringBuilder response = new StringBuilder();
-            switch (transactionStage)
+            if (userTransaction != null)
             {
-                case TransactionStage.WAITING_FOR_TRANSACTION:
-                    response.AppendLine("You have no active transactions. Please send us a steam trade offer first.");
-                    break;
-                case TransactionStage.WAITING_FOR_CONFIRMATION:
+                if(userTransaction.Confirmed)
+                {
+                    response.AppendLine("Transaction already confirmed");
+                }
+                else
+                {
                     databaseHandler.ConfirmTransaction(steamID.ToString());
-                    response.AppendLine("Transaction confirmed. We will soon send you your money.");
-                    break;
-                default:
-                    response.AppendLine("Transaction already confirmed. Money transfer is in process.");
-                    break;
+                    response.AppendLine("Transaction confirmed");
+                }
+            }
+            else
+            {
+                response.AppendLine("No active transaction");
             }
             sendMessage(steamID, response.ToString());
         }
@@ -1005,38 +984,25 @@ namespace TradeBot.Bot
         {
             User user = databaseHandler.GetUser(steamID.ToString());
             StringBuilder response = new StringBuilder();
-            TransactionStage transactionStage = databaseHandler.getTransactionStage(user.SteamID);
-            string status = null;
-            switch (transactionStage)
+            Transaction userTransaction = databaseHandler.GetUserTransaction(user.SteamID.ToString());
+            if (userTransaction != null)
             {
-                case TransactionStage.WAITING_FOR_TRANSACTION:
-                    response.AppendLine("You have no active transactions. To start a transaction, send us a steam trade offer.");
-                    break;
-                case TransactionStage.WAITING_FOR_CONFIRMATION:
-                    status = "Waiting for confirmation. To confirm type: '!confirm [you paypal email address]'.";
-                    break;
-                case TransactionStage.WAITING_FOR_TRADEOFFER:
-                    status = "Waiting for trade offer.";
-                    break;
-                case TransactionStage.WAITING_FOR_ETH:
-                    status = "Waiting for ETH transfer.";
-                    break;
-                case TransactionStage.SENDING_MONEY:
-                    status = "Sending money to your paypal account.";
-                    break;
+                response.AppendLine("Transaction created: " + userTransaction.CreationDate);
+                List<Tradeoffer> userTradeOffers = databaseHandler.GetTradeOffers(userTransaction);
+                int num = 1;
+                foreach (var userOffer in userTradeOffers)
+                {
+                    response.AppendLine("Offer item no: " + num);
+                    response.AppendLine("AppId: " + userOffer.AppId);
+                    response.AppendLine("ContextId: " + userOffer.ContextId);
+                    response.AppendLine("AssetId: " + userOffer.AssetId);
+                    response.AppendLine("Amount: " + userOffer.Amount);
+                    num++;
+                }
             }
-            if (status != null)
+            else
             {
-                Transaction transaction = databaseHandler.GetUserTransaction(user.SteamID);
-                response.Append("---Transaction details---\n");
-                response.Append("Created: ");
-                response.AppendLine(transaction.CreationDate.ToString("MM/dd/yyyy") + " " + transaction.UpdateTime);
-                response.Append("Number of keys: ");
-                response.AppendLine("" + databaseHandler.GetUserTradeOffer(user.SteamID).Amount);
-                response.Append("Trade value: ");
-                response.AppendLine("" + databaseHandler.GetUserTradeOffer(user.SteamID).TotalValue + "USD");
-                response.Append("Status: ");
-                response.AppendLine(status);
+                response.AppendLine("No active transactions");
             }
             sendMessage(steamID, response.ToString());
         }
@@ -1199,7 +1165,7 @@ namespace TradeBot.Bot
                     Tradeoffer tradeoffer = databaseHandler.GetUserTradeOffer(to.ToString());
                     sb.Append("User: " + getPersonaName(offer.Key.PartnerSteamId) + ", offer ID: " + offer.Key.TradeOfferId + ", " + tradeoffer.Amount);
                     sb.Append(tradeoffer.Amount > 1 ? " keys" : " key");
-                    sb.Append(", total value: " + tradeoffer.TotalValue + "USD.");
+                    //sb.Append(", total value: " + tradeoffer.TotalValue + "USD.");
                     sb.AppendLine();
                 }
             string offers = sb.ToString();
@@ -1216,10 +1182,10 @@ namespace TradeBot.Bot
             User user = databaseHandler.GetUser(steamOffer.PartnerSteamId.ToString());
             if(databaseHandler.GetUserTransaction(user.SteamID) == null)
             {
-                Transaction transaction = new Transaction(user.UserID, DateTime.Now, DateTime.Now.ToString("HH:mm"), true, false, false, false);
+                Transaction transaction = new Transaction(user.UserID, DateTime.Now, true, false, false);
                 databaseHandler.AddTransaction(transaction);
                 transaction = databaseHandler.GetUserTransaction(user.SteamID);
-                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, steamOffer.TradeOfferId, steamOffer.Items.GetTheirItems().Count, 0, offerValue, true);
+                Tradeoffer tradeoffer = new Tradeoffer(transaction.TransactionID, steamOffer.TradeOfferId, steamOffer.Items.GetTheirItems().Count, 0, 0, 0);
                 databaseHandler.AddTradeOffer(tradeoffer);
             }
         }
@@ -1270,65 +1236,70 @@ namespace TradeBot.Bot
         #region test
         private void SendTradeOffer(SteamID from)
         {
-            SteamTrade.TradeOffer.TradeOffer steamOffer = tradeOfferManager.NewOffer(from);
-            steamOffer.Items.AddMyItem(730, 2, 14542585015);
-            steamOffer.Items.AddMyItem(730, 2, 14824930771);
-            steamOffer.Items.AddTheirItem(730, 2, 9975687479);
-            log.Info("Sending trade offer to " + getPersonaName(from));        
-            string offerId;
-            if(steamOffer.Send(out offerId))
+            Transaction transaction = databaseHandler.GetUserTransaction(from.ToString());
+            var response = new StringBuilder();
+            if(transaction == null)
             {
-                AcceptAllTradeConfirmations();
-                log.Info("Offer (id: " + offerId + ") sent!");
+                response.AppendLine("No active transactions");
+            }
+            else
+            {
+                List<Tradeoffer> userOffers = databaseHandler.GetUserTradeOffers(from.ToString());
+                SteamTrade.TradeOffer.TradeOffer steamOffer = tradeOfferManager.NewOffer(from);
+                foreach (var offer in userOffers)
+                {
+                    steamOffer.Items.AddTheirItem(offer.AppId, offer.ContextId, offer.AssetId, offer.Amount);
+                }
+                string offerId;
+
+                try
+                {
+                    if (steamOffer.Send(out offerId))
+                    {
+                        AcceptAllTradeConfirmations();
+                        log.Info("Offer (id: " + offerId + ") sent to " + getPersonaName(from));
+                        response.AppendLine("Trade offer has been sent");
+                        foreach (var offer in userOffers)
+                        {
+                            offer.SteamOfferID = offerId;
+                            databaseHandler.UpdateTradeOffer(offer);
+                        }
+                    }
+                    else
+                    {
+                        log.Info("Sending offer to " + getPersonaName(from) + " failed");
+                        response.AppendLine("Couldn't send trade offer");
+                    }
+                } catch (Exception e)
+                {
+                    log.Info("Sending offer to " + getPersonaName(from) + " failed");
+                    response.AppendLine("Couldn't send trade offer");
+                }
+            }
+            sendMessage(from, response.ToString());
+        }
+        private void CreateDefaultTransaction(SteamID from)
+        {
+            StringBuilder response = new StringBuilder();
+            User user = databaseHandler.GetUser(from.ToString());
+            Transaction oldTransaction = databaseHandler.GetUserTransaction(from.ToString());
+            if (oldTransaction != null)
+            {
+                databaseHandler.DeleteTransaction(oldTransaction);
+                log.Info("Deleting transaction from: " + getPersonaName(from));
+                response.AppendLine("Old transaction deleted");
+                return;
             }
 
-            //log.Info("Received offer from " + getPersonaName(from) + "(steamID: " + from + ")");
-            //log.Info("PartnerID: " + steamOffer.PartnerSteamId);
-            //log.Info("Message: " + steamOffer.Message);
-            //log.Info("IsFirstOffer: " + steamOffer.IsFirstOffer);
-            //log.Info("IsOurOffer: " + steamOffer.IsOurOffer);
-            //log.Info("TradeofferID: " + steamOffer.TradeOfferId);
-            //List<SteamTrade.TradeOffer.TradeOffer.TradeStatusUser.TradeAsset> theirAssets = steamOffer.Items.GetTheirItems();
-            //List<SteamTrade.TradeOffer.TradeOffer.TradeStatusUser.TradeAsset> myAssets = steamOffer.Items.GetMyItems();
-            //if (theirAssets.Count != 0)
-            //{
-            //    var counter = 0;
-            //    log.Info("Their assets:");
-            //    foreach (var asset in theirAssets)
-            //    {
+            Transaction transaction = new Transaction(user.UserID, DateTime.Now, true, false, false);
+            databaseHandler.AddTransaction(transaction);
+            transaction = databaseHandler.GetUserTransaction(from.ToString());
+            Tradeoffer offer = new Tradeoffer(transaction.TransactionID, "", 730, 2, 9975687479, 1);
+            databaseHandler.AddTradeOffer(offer);
+            log.Info("Adding new transaction from: " + getPersonaName(from));
+            response.AppendLine("New transaction created successfully");
 
-            //        log.Info("Asset no: " + counter);
-            //        log.Info("AppId: " + asset.AppId);
-            //        log.Info("ContextId: " + asset.ContextId);
-            //        log.Info("AssetId: " + asset.AssetId);
-            //        log.Info("Amount: " + asset.Amount);
-            //        counter++;
-            //    }
-            //}
-            //else
-            //{
-            //    log.Info("No assets in THEIR assets.");
-            //}
-            //if (myAssets.Count != 0)
-            //{
-            //    var counter = 0;
-            //    log.Info("My assets:");
-            //    foreach (var asset in myAssets)
-            //    {
-
-            //        log.Info("Asset no: " + counter);
-            //        log.Info(" " + asset.AppId);
-            //        log.Info(" " + asset.ContextId);
-            //        log.Info(" " + asset.AssetId);
-            //        log.Info(" " + asset.Amount);
-            //        counter++;
-            //    }
-            //}
-            //else
-            //{
-            //    log.Info("No assets in MY assets.");
-            //}
-
+            sendMessage(from, response.ToString());
         }
         #endregion
     }

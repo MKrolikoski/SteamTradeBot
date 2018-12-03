@@ -182,7 +182,7 @@ namespace TradeBot.Database
                 Transaction transactionInDB = GetTransaction(transaction.TransactionID);
                 if (transactionInDB == null)
                 {
-                    connection.Query<Transaction>($"INSERT INTO Transactions(UserID, CreationDate, Sell,Buy,Confirmed, MoneyTransfered, UpdateTime) VALUES ('{transaction.UserID}','{transaction.CreationDate.ToString("yyyy-MM-dd HH:mm")}',{transaction.Sell.ToString()},{transaction.Buy.ToString()},{transaction.Confirmed.ToString()},{transaction.MoneyTransfered.ToString()}, '{transaction.UpdateTime}')");
+                    connection.Query<Transaction>($"INSERT INTO Transactions(UserID, CreationDate, Sell,Buy,Confirmed) VALUES ('{transaction.UserID}','{transaction.CreationDate.ToString("yyyy-MM-dd HH:mm")}',{transaction.Sell.ToString()},{transaction.Buy.ToString()},{transaction.Confirmed.ToString()})");
                     return true;
                 }
                 else
@@ -205,7 +205,7 @@ namespace TradeBot.Database
                 Transaction transactionInDB = GetTransaction(transaction.TransactionID);
                 if (transactionInDB != null)
                 {
-                    connection.Query<Transaction>($"UPDATE Transactions SET CreationDate='{transaction.CreationDate.ToString("yyyy-MM-dd")}', Sell={transaction.Sell.ToString()},Buy={transaction.Buy.ToString()},Confirmed={transaction.Confirmed.ToString()},MoneyTransfered={transaction.MoneyTransfered.ToString()},UpdateTime='{transaction.UpdateTime}' WHERE TransactionID='{transaction.TransactionID}'");
+                    connection.Query<Transaction>($"UPDATE Transactions SET CreationDate='{transaction.CreationDate.ToString("yyyy-MM-dd")}', Sell={transaction.Sell.ToString()},Buy={transaction.Buy.ToString()},Confirmed={transaction.Confirmed.ToString()}' WHERE TransactionID='{transaction.TransactionID}'");
                     return true;
                 }
                 else
@@ -279,6 +279,21 @@ namespace TradeBot.Database
                 }
             }
         }
+
+        public List<Tradeoffer> GetTradeOffers(Transaction transaction)
+        {
+            using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
+            {
+                try
+                {
+                    return connection.Query<Tradeoffer>($"SELECT * FROM TradeOffers WHERE TradeOffers.TransactionID='{transaction.TransactionID}'").ToList();
+                }
+                catch (InvalidOperationException)
+                {
+                    return null;
+                }
+            }
+        }
         /// <summary>
         /// Method connect to databse and returns user transactions who has steam id same as in parameter.
         /// </summary>
@@ -293,7 +308,31 @@ namespace TradeBot.Database
                 {
                     try
                     {
-                        return connection.Query<Tradeoffer>($"select TradeOfferID, Amount, CostPerOne, Accepted, SteamOfferID, TotalValue from Users natural join Transactions natural join TradeOffers WHERE Users.UserID='{user.UserID}'").Single();
+                        return connection.Query<Tradeoffer>($"select TradeOfferID, AppId, ContextId, AssetId, Amount, SteamOfferID from Users natural join Transactions natural join TradeOffers WHERE Users.UserID='{user.UserID}'").Single();
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return null;
+                    }
+                }
+                else
+                {
+                    return null;
+                }
+
+            }
+        }
+
+        public List<Tradeoffer> GetUserTradeOffers(string steamID)
+        {
+            using (IDbConnection connection = new MySqlConnection(Helper.CnnVal("SteamBotDB")))
+            {
+                User user = GetUser(steamID);
+                if (user != null)
+                {
+                    try
+                    {
+                        return connection.Query<Tradeoffer>($"select TradeOfferID, AppId, ContextId, AssetId, Amount, SteamOfferID from Users natural join Transactions natural join TradeOffers WHERE Users.UserID='{user.UserID}'").ToList();
                     }
                     catch (InvalidOperationException)
                     {
@@ -320,7 +359,7 @@ namespace TradeBot.Database
                 Tradeoffer tradeOfferInDB = GetTradeOffer(tradeoffer.TradeofferID);
                 if (tradeOfferInDB == null)
                 {
-                    connection.Query<Tradeoffer>($"INSERT INTO TradeOffers(TransactionID, SteamOfferID, Amount,CostPerOne, Accepted, TotalValue) VALUES ('{tradeoffer.TransactionID}','{tradeoffer.SteamOfferID}','{tradeoffer.Amount}',{tradeoffer.CostPerOne.ToString(CultureInfo.GetCultureInfo("en-US"))}, {tradeoffer.Accepted.ToString()}, {tradeoffer.TotalValue.ToString(CultureInfo.GetCultureInfo("en-US"))})");
+                    connection.Query<Tradeoffer>($"INSERT INTO TradeOffers(TransactionID, SteamOfferID, AppId, ContextId, AssetId, Amount) VALUES ('{tradeoffer.TransactionID}','{tradeoffer.SteamOfferID}','{tradeoffer.AppId}','{tradeoffer.ContextId}','{tradeoffer.AssetId}','{tradeoffer.Amount}')");
                     return true;
                 }
                 else
@@ -342,7 +381,7 @@ namespace TradeBot.Database
                 Tradeoffer tradeOfferInDB = GetTradeOffer(tradeoffer.TradeofferID);
                 if (tradeOfferInDB != null)
                 {
-                    connection.Query<Tradeoffer>($"UPDATE TradeOffers SET Amount='{tradeoffer.Amount}',CostPerOne={tradeoffer.CostPerOne.ToString(CultureInfo.GetCultureInfo("en-US"))}, Accepted={tradeoffer.Accepted.ToString()} WHERE TradeOfferID='{tradeoffer.TradeofferID}'");
+                    connection.Query<Tradeoffer>($"UPDATE TradeOffers SET Amount='{tradeoffer.Amount}',AppId={tradeoffer.AppId}, ContextId={tradeoffer.ContextId}, AssetId={tradeoffer.AssetId}, SteamOfferId={tradeoffer.SteamOfferID} WHERE TradeOfferID='{tradeoffer.TradeofferID}'");
                     return true;
                 }
                 else

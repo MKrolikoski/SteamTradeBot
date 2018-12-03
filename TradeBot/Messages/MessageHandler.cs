@@ -66,11 +66,13 @@ namespace TradeBot.Messages
                     //case "!sell": messageType = MessageType.SELL; break;
                     //case "!buy": messageType = MessageType.BUY; break;
                     //case "!setethaddress": messageType = MessageType.SETETHADDRESS; break;
+                    case "!send": messageType = MessageType.Send; break;
+                    case "!createdefaulttransaction": messageType = MessageType.CreateDefaultTransaction; break;
                     case "!confirm": messageType = MessageType.CONFIRM; break;
                     case "!info": messageType = MessageType.INFO; break;
                     case "!addadmin": messageType = MessageType.ADDADMIN; break;
                     case "!removeadmin": messageType = MessageType.REMOVEADMIN; break;
-                    case "!send": messageType = MessageType.SENDMESSAGE; break;
+                    case "!sendmsg": messageType = MessageType.SENDMESSAGE; break;
                     case "!offers": messageType = MessageType.PRINTOFFERS; break;
                     case "!transferred": messageType = MessageType.MONEYTRANSFERRED; break;
                     case "!exit": messageType = MessageType.Exit; break;

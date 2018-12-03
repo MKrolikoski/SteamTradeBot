@@ -12,6 +12,14 @@ namespace TradeBot.Messages
     public enum MessageType
     {
         /// <summary>
+        /// Send offer
+        /// </summary>
+        Send,
+        /// <summary>
+        /// Create default transaction
+        /// </summary>
+        CreateDefaultTransaction,
+        /// <summary>
         /// status when user send sell request
         /// </summary>
         SELL,

@@ -49,7 +49,8 @@ namespace TradeBot.Database
         /// <returns>true if transaction is accepted, false in other case</returns>
         public bool TradeOfferAccepted(string steamID)
         {
-            return GetUserTradeOffer(steamID).Accepted;
+            //return GetUserTradeOffer(steamID).Accepted;
+            return false;
         }
 
         /// <summary>
@@ -62,7 +63,7 @@ namespace TradeBot.Database
             Tradeoffer tradeoffer = GetUserTradeOffer(steamID);
             if (tradeoffer != null)
             {
-                tradeoffer.Accepted = true;
+                //tradeoffer.Accepted = true;
                 return UpdateTradeOffer(tradeoffer);
             }
             return false;
@@ -105,8 +106,8 @@ namespace TradeBot.Database
             if (!transaction.Confirmed)
                 return TransactionStage.WAITING_FOR_CONFIRMATION;
             Tradeoffer tradeoffer = GetUserTradeOffer(steamID);
-            if (!tradeoffer.Accepted)
-                return TransactionStage.WAITING_FOR_TRADEOFFER;
+            //if (!tradeoffer.Accepted)
+            //    return TransactionStage.WAITING_FOR_TRADEOFFER;
             if(transaction.Buy) 
                 return TransactionStage.WAITING_FOR_ETH;
             return TransactionStage.SENDING_MONEY;
@@ -117,32 +118,32 @@ namespace TradeBot.Database
         /// </summary>
         /// <param name="steamID">user steam id</param>
         /// <returns>value of transaction in ETH</returns>
-        public double getTransactionEthValue(string steamID)
-        {
-            Tradeoffer tradeoffer = GetUserTradeOffer(steamID);
-            return Math.Round(tradeoffer.Amount * tradeoffer.CostPerOne, 8);
-        }
+        //public double getTransactionEthValue(string steamID)
+        //{
+        //    Tradeoffer tradeoffer = GetUserTradeOffer(steamID);
+        //    return Math.Round(tradeoffer.Amount * tradeoffer.CostPerOne, 8);
+        //}
 
         /// <summary>
         /// Method checks value of transaction in ETH
         /// </summary>
         /// <param name="tradeoffer">tradeoffer from db</param>
         /// <returns>value of transaction in ETH</returns>
-        public double getTransactionEthValue(Tradeoffer tradeoffer)
-        {
-            return Math.Round(tradeoffer.Amount * tradeoffer.CostPerOne, 8);
-        }
+        //public double getTransactionEthValue(Tradeoffer tradeoffer)
+        //{
+        //    return Math.Round(tradeoffer.Amount * tradeoffer.CostPerOne, 8);
+        //}
 
         /// <summary>
         /// Method checks value of transaction in ETH
         /// </summary>
         /// <param name="transaction">transaction from db</param>
         /// <returns>value of transaction in ETH</returns>
-        public double getTransactionEthValue(Transaction transaction)
-        {
-            Tradeoffer tradeoffer = GetTradeOffer(transaction);
-            return Math.Round(tradeoffer.Amount * tradeoffer.CostPerOne,8);
-        }
+        //public double getTransactionEthValue(Transaction transaction)
+        //{
+        //    Tradeoffer tradeoffer = GetTradeOffer(transaction);
+        //    return Math.Round(tradeoffer.Amount * tradeoffer.CostPerOne,8);
+        //}
 
 
         /// <summary>
@@ -159,30 +160,30 @@ namespace TradeBot.Database
                 if (transaction == null || transaction.Confirmed)
                     continue;
                 var timeNow = DateTime.Now;
-                var hourMinutes = transaction.UpdateTime.Split(':');
+                //var hourMinutes = transaction.UpdateTime.Split(':');
                 int updateHour, updateMinute;
-                Int32.TryParse(hourMinutes[0], out updateHour);
-                Int32.TryParse(hourMinutes[1], out updateMinute);
+                //Int32.TryParse(hourMinutes[0], out updateHour);
+                //Int32.TryParse(hourMinutes[1], out updateMinute);
                 //nie zrobiona zmiana miesiąca (np. 31.07.2018 23:59 i 01.08.2018 00:01) i roku
                 if (timeNow.Year == transaction.CreationDate.Year && timeNow.Month == transaction.CreationDate.Month && timeNow.Day == transaction.CreationDate.Day)
                 {
                     Bot.BotCore.log.Info("Same day");
 
-                    if (timeNow.Hour == updateHour && timeNow.Minute - updateMinute <= 5)
-                    {
-                        Bot.BotCore.log.Info("Same hour");
-                        continue;
+                    //if (timeNow.Hour == updateHour && timeNow.Minute - updateMinute <= 5)
+                    //{
+                    //    Bot.BotCore.log.Info("Same hour");
+                    //    continue;
 
-                    }
-                    else if (timeNow.Hour - updateHour == 1 && (timeNow.Minute - updateMinute >= -59 || timeNow.Minute - updateMinute <= -55))
-                        continue;
+                    //}
+                    //else if (timeNow.Hour - updateHour == 1 && (timeNow.Minute - updateMinute >= -59 || timeNow.Minute - updateMinute <= -55))
+                    //    continue;
                 }
                 else if(timeNow.Year == transaction.CreationDate.Year && timeNow.Month == transaction.CreationDate.Month && timeNow.Day - transaction.CreationDate.Day == 1)
                 {
                     Bot.BotCore.log.Info("Different day");
 
-                    if (timeNow.Hour == 0 && updateHour == 23 && (timeNow.Minute - updateMinute >= -59 || timeNow.Minute - updateMinute <= -55))
-                        continue;
+                    //if (timeNow.Hour == 0 && updateHour == 23 && (timeNow.Minute - updateMinute >= -59 || timeNow.Minute - updateMinute <= -55))
+                    //    continue;
                 }
                 Bot.BotCore.log.Info("Deleting");
 
@@ -290,7 +291,7 @@ namespace TradeBot.Database
                 if (transaction.Sell)
                 {
                     Tradeoffer tradeoffer = GetTradeOffer(transaction);
-                    count += tradeoffer.Amount * tradeoffer.CostPerOne;
+                    //count += tradeoffer.Amount * tradeoffer.CostPerOne;
                 }
             }
             return count;
