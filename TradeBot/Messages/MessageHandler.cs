@@ -63,9 +63,9 @@ namespace TradeBot.Messages
                 switch (command)
                 {
                     case "!help": messageType = MessageType.HELP; break;
-                    //case "!sell": messageType = MessageType.SELL; break;
-                    //case "!buy": messageType = MessageType.BUY; break;
-                    //case "!setethaddress": messageType = MessageType.SETETHADDRESS; break;
+                    case "!sell": messageType = MessageType.SELL; break;
+                    case "!buy": messageType = MessageType.BUY; break;
+                    case "!setethaddress": messageType = MessageType.SETETHADDRESS; break;
                     case "!send": messageType = MessageType.Send; break;
                     case "!createdefaulttransaction": messageType = MessageType.CreateDefaultTransaction; break;
                     case "!confirm": messageType = MessageType.CONFIRM; break;

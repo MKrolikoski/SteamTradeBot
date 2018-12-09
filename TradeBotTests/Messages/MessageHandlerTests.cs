@@ -1,11 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using TradeBot.Messages;
-using TradeBot.Bot;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using SteamKit2;
 
 namespace TradeBot.Messages.Tests
@@ -18,7 +12,7 @@ namespace TradeBot.Messages.Tests
         {
             string message = "!help";
             SteamID from;
-            Utils.TrySetSteamID("198662804", out from);
+            Bot.Utils.TrySetSteamID("198662804", out from);
             List<string> parameters = new List<string>();
             Message expectedResponse = new Message(MessageType.HELP, parameters, from);
             MessageHandler messageHandler = new MessageHandler();
@@ -31,7 +25,7 @@ namespace TradeBot.Messages.Tests
         {
             string message = "!sell 12";
             SteamID from;
-            Utils.TrySetSteamID("198662804", out from);
+            Bot.Utils.TrySetSteamID("198662804", out from);
             List<string> parameters = new List<string>();
             parameters.Add("12");
             Message expectedResponse = new Message(MessageType.SELL, parameters, from);
@@ -44,7 +38,7 @@ namespace TradeBot.Messages.Tests
         {
             string message = "!buy 34";
             SteamID from;
-            Utils.TrySetSteamID("198662804", out from);
+            Bot.Utils.TrySetSteamID("198662804", out from);
             List<string> parameters = new List<string>();
             parameters.Add("34");
             Message expectedResponse = new Message(MessageType.BUY, parameters, from);       
@@ -57,7 +51,7 @@ namespace TradeBot.Messages.Tests
         {
             string message = "!setethaddress 1232190xsa0314";
             SteamID from;
-            Utils.TrySetSteamID("198662804", out from);
+            Bot.Utils.TrySetSteamID("198662804", out from);
             List<string> parameters = new List<string>();
             parameters.Add("1232190xsa0314");
             Message expectedResponse = new Message(MessageType.SETETHADDRESS, parameters, from);
@@ -70,7 +64,7 @@ namespace TradeBot.Messages.Tests
         {
             string message = "!unknown command";
             SteamID from;
-            Utils.TrySetSteamID("198662804", out from);
+            Bot.Utils.TrySetSteamID("198662804", out from);
             List<string> parameters = new List<string>();
             Message expectedResponse = new Message(MessageType.UNKNOWN, parameters, from);
             MessageHandler messageHandler = new MessageHandler();
@@ -81,12 +75,12 @@ namespace TradeBot.Messages.Tests
         [TestMethod()]
         public void processDifferentCaseMessageTest()
         {
-            string message = "!SeTETHaddreSS 1234";
+            string message = "!HeLP 1234";
             SteamID from;
-            Utils.TrySetSteamID("198662804", out from);
+            Bot.Utils.TrySetSteamID("198662804", out from);
             List<string> parameters = new List<string>();
             parameters.Add("1234");
-            Message expectedResponse = new Message(MessageType.SETETHADDRESS, parameters, from);
+            Message expectedResponse = new Message(MessageType.HELP, parameters, from);
             MessageHandler messageHandler = new MessageHandler();
             Message actualResponse = messageHandler.parseMessage(message, from);
             Assert.AreEqual(expectedResponse, actualResponse);
